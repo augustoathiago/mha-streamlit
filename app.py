@@ -12,14 +12,14 @@ st.set_page_config(
 )
 
 # =========================================================
-# LOGO DA INSTITUIÇÃO
+# LOGO INSTITUCIONAL
 # =========================================================
 st.image("logo_maua.png", use_container_width=True)
 
 # =========================================================
-# TÍTULO E TEXTO INTRODUTÓRIO
+# TÍTULO
 # =========================================================
-st.title("Oscilador Mecânico Física II")
+st.title("Oscilador Mecânico Física 2")
 
 st.markdown(
     """
@@ -31,7 +31,7 @@ st.markdown(
 )
 
 # =========================================================
-# PARÂMETROS DO SISTEMA
+# PARÂMETROS
 # =========================================================
 st.header("Parâmetros do sistema")
 
@@ -58,28 +58,28 @@ omega0_r = float(f"{omega0:.3g}")
 # =========================================================
 st.subheader("Grandezas derivadas")
 
-st.latex(r"\gamma = \frac{b}{2m}")
-st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
-
 st.markdown(f"""
 - **Fator de amortecimento γ** = {gamma_r} rad/s  
 - **Frequência angular natural ω₀** = {omega0_r} rad/s
 """)
 
 # =========================================================
-# CLASSIFICAÇÃO DO MOVIMENTO
+# CLASSIFICAÇÃO
 # =========================================================
 st.header("Classificação do movimento")
 
 if gamma_r == 0:
     regime = "MHS"
     st.success("Movimento Harmônico Simples (γ = 0)")
+
 elif gamma_r < omega0_r:
     regime = "sub"
     st.info("Movimento Harmônico Subamortecido (γ < ω₀)")
+
 elif gamma_r == omega0_r:
     regime = "critico"
     st.warning("Movimento Criticamente Amortecido (γ = ω₀)")
+
 else:
     regime = "super"
     st.error("Movimento Superamortecido (γ > ω₀)")
@@ -91,65 +91,60 @@ st.header("Equações do movimento")
 
 t = np.linspace(0, 20, 4000)
 
-# ================= SUBAMORTECIDO =========================
-if regime == "sub":
+# ================= MHS =================
+if regime == "MHS":
+    A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
+    fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
+
+    y = A*np.sin(omega0_r*t + fase)
+    v = A*omega0_r*np.cos(omega0_r*t + fase)
+    a = -A*omega0_r**2*np.sin(omega0_r*t + fase)
+
+# ============== SUBAMORTECIDO ==========
+elif regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
-    omega_r = float(f"{omega:.3g}")
 
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
-    y = C*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
-
+    y = C*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
     v = (
-        C*omega_r*np.exp(-gamma_r*t)*np.cos(omega_r*t + fase)
-        - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
+        C*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
+        - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
     )
-
-    c_sin = C*(gamma_r**2 - omega_r**2)
-    c_cos = -2*C*gamma_r*omega_r
 
     a = (
-        c_sin*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
-        + c_cos*np.exp(-gamma_r*t)*np.cos(omega_r*t + fase)
+        C*(gamma_r**2 - omega**2)*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
+        - 2*C*gamma_r*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
     )
 
-# ================= CRITICAMENTE AMORTECIDO ===============
+# ============== CRÍTICO =================
 elif regime == "critico":
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
 
     y = (a0 + b0*t)*np.exp(-gamma_r*t)
-    v = (
-        b0*np.exp(-gamma_r*t)
-        - gamma_r*a0*np.exp(-gamma_r*t)
-        - gamma_r*b0*t*np.exp(-gamma_r*t)
-    )
-    a = (
-        gamma_r**2*a0*np.exp(-gamma_r*t)
-        - 2*gamma_r*b0*np.exp(-gamma_r*t)
-        + gamma_r**2*b0*t*np.exp(-gamma_r*t)
-    )
+    v = (b0 - gamma_r*(a0 + b0*t))*np.exp(-gamma_r*t)
+    a = (gamma_r**2*(a0 + b0*t) - 2*gamma_r*b0)*np.exp(-gamma_r*t)
 
-# ================= SUPERAMORTECIDO =======================
+# ============== SUPERAMORTECIDO =========
 else:
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
-    alpha_r = float(f"{alpha:.3g}")
 
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m)", -5.0, 5.0, 1.0, 0.01)
 
     y = (
-        a0*np.exp((alpha_r-gamma_r)*t)
-        + b0*np.exp(-(alpha_r+gamma_r)*t)
+        a0*np.exp((alpha-gamma_r)*t)
+        + b0*np.exp(-(alpha+gamma_r)*t)
     )
     v = (
-        a0*(alpha_r-gamma_r)*np.exp((alpha_r-gamma_r)*t)
-        - b0*(alpha_r+gamma_r)*np.exp(-(alpha_r+gamma_r)*t)
+        a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t)
+        - b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
     )
     a = (
-        a0*(alpha_r-gamma_r)**2*np.exp((alpha_r-gamma_r)*t)
-        + b0*(alpha_r+gamma_r)**2*np.exp(-(alpha_r+gamma_r)*t)
+        a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t)
+        + b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
     )
 
 # =========================================================
