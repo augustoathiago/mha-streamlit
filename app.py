@@ -4,11 +4,23 @@ import matplotlib.pyplot as plt
 import math
 
 st.set_page_config(
-    page_title="Oscilações Mecânicas",
+    page_title="Oscilador Massa–Mola com Amortecimento",
     layout="centered"
 )
 
-st.title("Oscilador Mecânico")
+# =========================================================
+# TÍTULO E TEXTO INTRODUTÓRIO
+# =========================================================
+st.title("Oscilador Massa–Mola com Amortecimento")
+
+st.markdown(
+    """
+    **Escolha os valores do coeficiente de amortecimento, da massa e da constante elástica
+    para observar os diferentes comportamentos: movimento harmônico simples,
+    movimento harmônico subamortecido, movimento criticamente amortecido
+    e movimento superamortecido.**
+    """
+)
 
 # =========================================================
 # 1. PARÂMETROS FUNDAMENTAIS
@@ -18,7 +30,7 @@ st.header("Parâmetros do sistema")
 col1, col2 = st.columns(2)
 
 with col1:
-    b = st.number_input("Constante de amortecimento b (kg/s)", 0.0, 10.0, 1.0, 0.01)
+    b = st.number_input("Coeficiente de amortecimento b (kg/s)", 0.0, 10.0, 1.0, 0.01)
     m = st.number_input("Massa m (kg)", 0.01, 10.0, 1.0, 0.01)
     k = st.number_input("Constante elástica k (N/m)", 0.01, 50.0, 10.0, 0.01)
 
@@ -68,19 +80,28 @@ st.header("Equações do movimento")
 
 t = np.linspace(0, 20, 3000)
 
+# ======================= SUBAMORTECIDO ===================
 if regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
     omega_r = float(f"{omega:.3g}")
-
-    T = 2 * np.pi / omega
-    f = 1 / T
 
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
     phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
     y = C * np.exp(-gamma_r * t) * np.sin(omega_r * t + phi)
 
-    st.latex(r"y(t)=C\,e^{-\gamma t}\sin(\omega t+\phi)")
+    v = C * np.exp(-gamma_r * t) * (
+        omega_r * np.cos(omega_r * t + phi)
+        - gamma_r * np.sin(omega_r * t + phi)
+    )
+
+    a = C * np.exp(-gamma_r * t) * (
+        -omega_r**2 * np.sin(omega_r * t + phi)
+        - 2 * gamma_r * omega_r * np.cos(omega_r * t + phi)
+        + gamma_r**2 * np.sin(omega_r * t + phi)
+    )
+
+    st.subheader("Posição")
     st.latex(
         rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
     )
@@ -92,17 +113,37 @@ if regime == "sub":
         rf"-{gamma_r}\sin({omega_r}t+{phi:.3g})\right]"
     )
 
+    st.subheader("Aceleração")
+    st.latex(
+        rf"a(t)={C:.3g}e^{{-{gamma_r}t}}"
+        rf"\left[-{omega_r**2:.3g}\sin({omega_r}t+{phi:.3g})"
+        rf"-2({gamma_r})({omega_r})\cos({omega_r}t+{phi:.3g})"
+        rf"+{gamma_r**2:.3g}\sin({omega_r}t+{phi:.3g})\right]"
+    )
+
+# ======================= CRÍTICO ==========================
 elif regime == "critico":
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
 
     y = (a0 + b0 * t) * np.exp(-gamma_r * t)
+    v = np.exp(-gamma_r * t) * (b0 - gamma_r * a0 - gamma_r * b0 * t)
+    a = np.exp(-gamma_r * t) * (
+        gamma_r**2 * a0 - 2 * gamma_r * b0 + gamma_r**2 * b0 * t
+    )
 
-    st.latex(r"y(t)=(a+bt)e^{-\gamma t}")
     st.latex(
         rf"y(t)=({a0:.3g}+{b0:.3g}t)e^{{-{gamma_r}t}}"
     )
+    st.latex(
+        rf"v(t)=e^{{-{gamma_r}t}}\left[{b0:.3g}-{gamma_r}({a0:.3g}+{b0:.3g}t)\right]"
+    )
+    st.latex(
+        rf"a(t)=e^{{-{gamma_r}t}}\left[{gamma_r**2:.3g}{a0:.3g}"
+        rf"-2({gamma_r}){b0:.3g}+{gamma_r**2:.3g}{b0:.3g}t\right]"
+    )
 
+# ======================= SUPERAMORTECIDO ==================
 elif regime == "super":
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
     alpha_r = float(f"{alpha:.3g}")
@@ -114,45 +155,53 @@ elif regime == "super":
         a0 * np.exp(alpha_r * t) + b0 * np.exp(-alpha_r * t)
     )
 
-    st.latex(
-        r"y(t)=e^{-\gamma t}\left[a e^{\sqrt{\gamma^2-\omega_0^2}\,t}"
-        r"+b e^{-\sqrt{\gamma^2-\omega_0^2}\,t}\right]"
+    v = np.exp(-gamma_r * t) * (
+        a0 * (alpha_r - gamma_r) * np.exp(alpha_r * t)
+        - b0 * (alpha_r + gamma_r) * np.exp(-alpha_r * t)
     )
+
+    a = np.exp(-gamma_r * t) * (
+        a0 * (alpha_r - gamma_r)**2 * np.exp(alpha_r * t)
+        + b0 * (alpha_r + gamma_r)**2 * np.exp(-alpha_r * t)
+    )
+
     st.latex(
         rf"y(t)=e^{{-{gamma_r}t}}\left[{a0:.3g}e^{{{alpha_r}t}}"
         rf"+{b0:.3g}e^{{-{alpha_r}t}}\right]"
     )
+    st.latex(
+        rf"v(t)=e^{{-{gamma_r}t}}\left[{a0:.3g}({alpha_r}-{gamma_r})e^{{{alpha_r}t}}"
+        rf"-{b0:.3g}({alpha_r}+{gamma_r})e^{{-{alpha_r}t}}\right]"
+    )
+    st.latex(
+        rf"a(t)=e^{{-{gamma_r}t}}\left[{a0:.3g}({alpha_r}-{gamma_r})^2e^{{{alpha_r}t}}"
+        rf"+{b0:.3g}({alpha_r}+{gamma_r})^2e^{{-{alpha_r}t}}\right]"
+    )
 
-else:  # MHS
+# ======================= MHS ===============================
+else:
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
     y = A * np.sin(omega0_r * t + phi)
+    v = A * omega0_r * np.cos(omega0_r * t + phi)
+    a = -A * omega0_r**2 * np.sin(omega0_r * t + phi)
 
-    st.latex(r"y(t)=A\sin(\omega_0 t+\phi)")
     st.latex(
         rf"y(t)={A:.3g}\sin({omega0_r}t+{phi:.3g})"
     )
-
-    st.subheader("Velocidade")
     st.latex(
         rf"v(t)={A:.3g}({omega0_r})\cos({omega0_r}t+{phi:.3g})"
     )
+    st.latex(
+        rf"a(t)=-{A:.3g}({omega0_r})^2\sin({omega0_r}t+{phi:.3g})"
+    )
 
 # =========================================================
-# 4. VELOCIDADE E ACELERAÇÃO (SEM ARTEFATO)
+# 4. GRÁFICOS
 # =========================================================
-v = np.gradient(y, t)
-a = -2 * gamma_r * v - (omega0_r**2) * y
+st.header("Gráficos")
 
-st.subheader("Aceleração")
-st.latex(
-    rf"a(t)=-2({gamma_r})\,v(t)-({omega0_r})^2y(t)"
-)
-
-# =========================================================
-# 5. GRÁFICOS CENTRALIZADOS
-# =========================================================
 fig, axs = plt.subplots(3, 1, figsize=(8, 10), sharex=True)
 
 def plot_central(ax, t, data, ylabel):
