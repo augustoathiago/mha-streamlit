@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import math
 
 st.set_page_config(
-    page_title="Oscilador Massa–Mola com Amortecimento",
+    page_title="Oscilador Mecânico",
     layout="centered"
 )
 
 # =========================================================
 # TÍTULO E TEXTO INTRODUTÓRIO
 # =========================================================
-st.title("Oscilador Massa–Mola com Amortecimento")
+st.title("Oscilador Mecânico")
 
 st.markdown(
     """
