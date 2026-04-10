@@ -12,14 +12,14 @@ st.set_page_config(
 )
 
 # =========================================================
-# LOGO INSTITUCIONAL
+# LOGO
 # =========================================================
 st.image("logo_maua.png", use_container_width=True)
 
 # =========================================================
 # TÍTULO
 # =========================================================
-st.title("Oscilador Mecânico Física 2")
+st.title("Oscilador Mecânico")
 
 st.markdown(
     """
@@ -31,7 +31,7 @@ st.markdown(
 )
 
 # =========================================================
-# PARÂMETROS
+# PARÂMETROS DO SISTEMA
 # =========================================================
 st.header("Parâmetros do sistema")
 
@@ -57,6 +57,9 @@ omega0_r = float(f"{omega0:.3g}")
 # GRANDEZAS DERIVADAS
 # =========================================================
 st.subheader("Grandezas derivadas")
+
+st.latex(r"\gamma = \frac{b}{2m}")
+st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
 
 st.markdown(f"""
 - **Fator de amortecimento γ** = {gamma_r} rad/s  
@@ -85,13 +88,13 @@ else:
     st.error("Movimento Superamortecido (γ > ω₀)")
 
 # =========================================================
-# SOLUÇÕES TEMPORAIS
+# SOLUÇÕES
 # =========================================================
 st.header("Equações do movimento")
 
 t = np.linspace(0, 20, 4000)
 
-# ================= MHS =================
+# ======================= MHS ==============================
 if regime == "MHS":
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
@@ -100,7 +103,19 @@ if regime == "MHS":
     v = A*omega0_r*np.cos(omega0_r*t + fase)
     a = -A*omega0_r**2*np.sin(omega0_r*t + fase)
 
-# ============== SUBAMORTECIDO ==========
+    T = 2*np.pi / omega0_r
+    f = 1 / T
+
+    st.subheader("Grandezas temporais (MHS)")
+    st.latex(r"T = \frac{2\pi}{\omega_0}")
+    st.latex(r"f = \frac{1}{T}")
+
+    st.markdown(f"""
+    - **Período T** = {T:.3g} s  
+    - **Frequência f** = {f:.3g} Hz
+    """)
+
+# =================== SUBAMORTECIDO ========================
 elif regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
 
@@ -112,13 +127,26 @@ elif regime == "sub":
         C*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
         - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
     )
-
     a = (
         C*(gamma_r**2 - omega**2)*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
         - 2*C*gamma_r*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
     )
 
-# ============== CRÍTICO =================
+    T = 2*np.pi / omega
+    f = 1 / T
+
+    st.subheader("Grandezas temporais (subamortecido)")
+    st.latex(r"\omega = \sqrt{\omega_0^2 - \gamma^2}")
+    st.latex(r"T = \frac{2\pi}{\omega}")
+    st.latex(r"f = \frac{1}{T}")
+
+    st.markdown(f"""
+    - **Frequência angular ω** = {omega:.3g} rad/s  
+    - **Pseudoperíodo T** = {T:.3g} s  
+    - **Frequência f** = {f:.3g} Hz
+    """)
+
+# =================== CRÍTICO ==============================
 elif regime == "critico":
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
@@ -127,7 +155,7 @@ elif regime == "critico":
     v = (b0 - gamma_r*(a0 + b0*t))*np.exp(-gamma_r*t)
     a = (gamma_r**2*(a0 + b0*t) - 2*gamma_r*b0)*np.exp(-gamma_r*t)
 
-# ============== SUPERAMORTECIDO =========
+# =================== SUPERAMORTECIDO ======================
 else:
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
 
