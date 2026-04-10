@@ -45,9 +45,6 @@ gamma_r = float(f"{gamma:.3g}")
 omega0_r = float(f"{omega0:.3g}")
 
 st.subheader("Grandezas derivadas")
-st.latex(r"\gamma = \frac{b}{2m}")
-st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
-
 st.markdown(f"""
 - **Fator de amortecimento γ** = {gamma_r} rad/s  
 - **Frequência angular natural ω₀** = {omega0_r} rad/s
@@ -72,14 +69,18 @@ else:
     st.error("Movimento superamortecido (γ > ω₀)")
 
 # =========================================================
-# EQUAÇÕES
+# RESOLUÇÕES
 # =========================================================
-st.header("Equações do movimento")
-
 t = np.linspace(0, 20, 4000)
 
-# -------- MOVIMENTO HARMÔNICO SIMPLES --------
+st.header("Resolução do movimento")
+
+# =========================================================
+# MOVIMENTO HARMÔNICO SIMPLES
+# =========================================================
 if regime == "mhs":
+    st.subheader("Equações do movimento")
+
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
@@ -100,64 +101,72 @@ if regime == "mhs":
     st.latex(rf"a(t)=-{A*omega0_r**2:.3g}\sin({omega0_r}t+{fase:.3g})")
 
     st.subheader("Grandezas temporais")
-    st.latex(r"T=\frac{2\pi}{\omega_0}")
-    st.latex(r"f=\frac{1}{T}")
-
     st.markdown(f"""
     - **Período T** = {T:.3g} s  
     - **Frequência f** = {f:.3g} Hz
     """)
 
-# -------- SUBAMORTECIDO --------
+# =========================================================
+# SUBAMORTECIDO
+# =========================================================
 elif regime == "sub":
+    st.subheader("Cálculos")
+
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
+    T = 2*np.pi / omega
+    f = 1 / T
+
+    st.latex(r"\omega=\sqrt{\omega_0^2-\gamma^2}")
+    st.latex(r"T=\frac{2\pi}{\omega}")
+    st.latex(r"f=\frac{1}{T}")
+
+    st.markdown(f"""
+    - **Frequência angular ω** = {omega:.3g} rad/s  
+    - **Pseudoperíodo T** = {T:.3g} s  
+    - **Frequência f** = {f:.3g} Hz
+    """)
+
+    st.subheader("Equações do movimento")
 
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
     y = C*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
-    v = C*np.exp(-gamma_r*t)*(omega*np.cos(omega*t+fase)-gamma_r*np.sin(omega*t+fase))
-    a = C*np.exp(-gamma_r*t)*((gamma_r**2-omega**2)*np.sin(omega*t+fase)-2*gamma_r*omega*np.cos(omega*t+fase))
-
-    T = 2*np.pi / omega
-    f = 1 / T
+    v = C*np.exp(-gamma_r*t)*(omega*np.cos(omega*t+fase) - gamma_r*np.sin(omega*t+fase))
+    a = C*np.exp(-gamma_r*t)*((gamma_r**2 - omega**2)*np.sin(omega*t+fase) - 2*gamma_r*omega*np.cos(omega*t+fase))
 
     st.latex(r"y(t)=C e^{-\gamma t}\sin(\omega t+\phi)")
     st.latex(rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega:.3g}t+{fase:.3g})")
 
-    st.latex(r"\omega=\sqrt{\omega_0^2-\gamma^2}")
-    st.latex(rf"\omega={omega:.3g}\ \text{{rad/s}}")
+    st.latex(r"v(t)=C e^{-\gamma t}[\omega\cos(\omega t+\phi)-\gamma\sin(\omega t+\phi)]")
+    st.latex(r"a(t)=C e^{-\gamma t}[(\gamma^2-\omega^2)\sin(\omega t+\phi)-2\gamma\omega\cos(\omega t+\phi)]")
 
-    st.latex(r"T=\frac{2\pi}{\omega}")
-    st.latex(r"f=\frac{1}{T}")
-
-    st.markdown(f"""
-    - **Pseudoperíodo T** = {T:.3g} s  
-    - **Frequência f** = {f:.3g} Hz
-    """)
-
-# -------- CRÍTICO --------
+# =========================================================
+# CRÍTICO
+# =========================================================
 elif regime == "critico":
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
 
     y = (a0 + b0*t)*np.exp(-gamma_r*t)
-    v = (b0 - gamma_r*(a0+b0*t))*np.exp(-gamma_r*t)
-    a = (gamma_r**2*(a0+b0*t)-2*gamma_r*b0)*np.exp(-gamma_r*t)
+    v = (b0 - gamma_r*(a0 + b0*t))*np.exp(-gamma_r*t)
+    a = (gamma_r**2*(a0 + b0*t) - 2*gamma_r*b0)*np.exp(-gamma_r*t)
 
     st.latex(r"y(t)=(a+bt)e^{-\gamma t}")
     st.latex(rf"y(t)=({a0:.3g}+{b0:.3g}t)e^{{-{gamma_r}t}}")
 
-# -------- SUPERAMORTECIDO --------
+# =========================================================
+# SUPERAMORTECIDO
+# =========================================================
 else:
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
 
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m)", -5.0, 5.0, 1.0, 0.01)
 
-    y = a0*np.exp((alpha-gamma_r)*t)+b0*np.exp(-(alpha+gamma_r)*t)
-    v = a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t)-b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
-    a = a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t)+b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
+    y = a0*np.exp((alpha-gamma_r)*t) + b0*np.exp(-(alpha+gamma_r)*t)
+    v = a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t) - b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
+    a = a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t) + b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
 
     st.latex(r"y(t)=e^{-\gamma t}[a e^{\sqrt{\gamma^2-\omega_0^2}t}+b e^{-\sqrt{\gamma^2-\omega_0^2}t}]")
 
@@ -175,19 +184,14 @@ st.header("Gráficos")
 
 fig, axs = plt.subplots(4, 1, figsize=(8, 14), sharex=True)
 
-axs[0].plot(t, y)
-axs[1].plot(t, v)
-axs[2].plot(t, a)
-
-axs[3].plot(t, K, label="Energia Cinética")
-axs[3].plot(t, U, label="Energia Potencial")
-axs[3].plot(t, E, label="Energia Mecânica Total")
-axs[3].legend()
-
-for ax, label in zip(axs, ["y (m)", "v (m/s)", "a (m/s²)", "Energia (J)"]):
+for ax, data, label in zip(
+    axs,
+    [y, v, a, E],
+    ["y (m)", "v (m/s)", "a (m/s²)", "Energia (J)"]
+):
+    ax.plot(t, data)
     ax.set_ylabel(label)
     ax.grid(True)
 
 axs[3].set_xlabel("Tempo (s)")
-
 st.pyplot(fig)
