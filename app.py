@@ -7,17 +7,17 @@ import math
 # CONFIGURAÇÃO DA PÁGINA
 # =========================================================
 st.set_page_config(
-    page_title="Oscilador Mecânico",
+    page_title="Oscilador Mecânico Física II",
     layout="centered"
 )
 
 # =========================================================
-# LOGO INSTITUCIONAL
+# LOGO
 # =========================================================
 st.image("logo_maua.png", use_container_width=True)
 
 # =========================================================
-# TÍTULO E TEXTO INTRODUTÓRIO
+# TÍTULO
 # =========================================================
 st.title("Oscilador Mecânico")
 
@@ -31,7 +31,7 @@ st.markdown(
 )
 
 # =========================================================
-# PARÂMETROS DO SISTEMA
+# PARÂMETROS
 # =========================================================
 st.header("Parâmetros do sistema")
 
@@ -62,12 +62,12 @@ st.latex(r"\gamma = \frac{b}{2m}")
 st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
 
 st.markdown(f"""
-- **γ = {gamma_r} rad/s**
-- **ω₀ = {omega0_r} rad/s**
+- **Fator de amortecimento γ** = {gamma_r} rad/s  
+- **Frequência angular natural ω₀** = {omega0_r} rad/s
 """)
 
 # =========================================================
-# CLASSIFICAÇÃO DO MOVIMENTO
+# CLASSIFICAÇÃO
 # =========================================================
 st.header("Classificação do movimento")
 
@@ -90,73 +90,112 @@ else:
 # =========================================================
 # SOLUÇÕES TEMPORAIS
 # =========================================================
-st.header("Equações do movimento")
-
 t = np.linspace(0, 20, 4000)
 
-# =========================================================
-# SUBAMORTECIDO
-# =========================================================
+st.header("Equações do movimento")
+
+# ==================== SUBAMORTECIDO ======================
 if regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
     omega_r = float(f"{omega:.3g}")
 
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
-    phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
+    fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
-    y = C*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
-
+    y = C*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
     v = (
-        C*omega_r*np.exp(-gamma_r*t)*np.cos(omega_r*t + phi)
-        - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
+        C*omega_r*np.exp(-gamma_r*t)*np.cos(omega_r*t + fase)
+        - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
     )
 
-    c_sin = C*(gamma_r**2 - omega_r**2)
-    c_cos = -2*C*gamma_r*omega_r
+    coef_sin = C*(gamma_r**2 - omega_r**2)
+    coef_cos = -2*C*gamma_r*omega_r
 
     a = (
-        c_sin*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
-        + c_cos*np.exp(-gamma_r*t)*np.cos(omega_r*t + phi)
+        coef_sin*np.exp(-gamma_r*t)*np.sin(omega_r*t + fase)
+        + coef_cos*np.exp(-gamma_r*t)*np.cos(omega_r*t + fase)
     )
 
     st.latex(
-        rf"y(t) = {C:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
+        rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{fase:.3g})"
     )
     st.latex(
-        rf"v(t) = {C*omega_r:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{phi:.3g})"
-        rf" - {C*gamma_r:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
+        rf"v(t)={C*omega_r:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{fase:.3g})"
+        rf"-{C*gamma_r:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{fase:.3g})"
     )
     st.latex(
-        rf"a(t) = {c_sin:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
-        rf" + {c_cos:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{phi:.3g})"
+        rf"a(t)={coef_sin:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{fase:.3g})"
+        rf"+{coef_cos:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{fase:.3g})"
+    )
+
+# ======================= CRÍTICO =========================
+elif regime == "critico":
+    a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
+    b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
+
+    y = (a0 + b0*t)*np.exp(-gamma_r*t)
+    v = (
+        b0*np.exp(-gamma_r*t)
+        - gamma_r*a0*np.exp(-gamma_r*t)
+        - gamma_r*b0*t*np.exp(-gamma_r*t)
+    )
+    a = (
+        gamma_r**2*a0*np.exp(-gamma_r*t)
+        - 2*gamma_r*b0*np.exp(-gamma_r*t)
+        + gamma_r**2*b0*t*np.exp(-gamma_r*t)
+    )
+
+    st.latex(
+        rf"y(t)=({a0:.3g}+{b0:.3g}t)e^{{-{gamma_r}t}}"
+    )
+    st.latex(
+        rf"v(t)={b0:.3g}e^{{-{gamma_r}t}}"
+        rf"-{gamma_r*a0:.3g}e^{{-{gamma_r}t}}"
+        rf"-{gamma_r*b0:.3g}t e^{{-{gamma_r}t}}"
+    )
+    st.latex(
+        rf"a(t)={gamma_r**2*a0:.3g}e^{{-{gamma_r}t}}"
+        rf"-{2*gamma_r*b0:.3g}e^{{-{gamma_r}t}}"
+        rf"+{gamma_r**2*b0:.3g}t e^{{-{gamma_r}t}}"
+    )
+
+# ==================== SUPERAMORTECIDO ====================
+else:
+    alpha = math.sqrt(gamma_r**2 - omega0_r**2)
+    alpha_r = float(f"{alpha:.3g}")
+
+    a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
+    b0 = st.slider("Constante b (m)", -5.0, 5.0, 1.0, 0.01)
+
+    y = (
+        a0*np.exp((alpha_r-gamma_r)*t)
+        + b0*np.exp(-(alpha_r+gamma_r)*t)
+    )
+    v = (
+        a0*(alpha_r-gamma_r)*np.exp((alpha_r-gamma_r)*t)
+        - b0*(alpha_r+gamma_r)*np.exp(-(alpha_r+gamma_r)*t)
+    )
+    a = (
+        a0*(alpha_r-gamma_r)**2*np.exp((alpha_r-gamma_r)*t)
+        + b0*(alpha_r+gamma_r)**2*np.exp(-(alpha_r+gamma_r)*t)
+    )
+
+    st.latex(
+        rf"y(t)={a0:.3g}e^{{({alpha_r}-{gamma_r})t}}"
+        rf"+{b0:.3g}e^{{-({alpha_r}+{gamma_r})t}}"
+    )
+    st.latex(
+        rf"v(t)={a0*(alpha_r-gamma_r):.3g}e^{{({alpha_r}-{gamma_r})t}}"
+        rf"-{b0*(alpha_r+gamma_r):.3g}e^{{-({alpha_r}+{gamma_r})t}}"
+    )
+    st.latex(
+        rf"a(t)={a0*(alpha_r-gamma_r)**2:.3g}e^{{({alpha_r}-{gamma_r})t}}"
+        rf"+{b0*(alpha_r+gamma_r)**2:.3g}e^{{-({alpha_r}+{gamma_r})t}}"
     )
 
 # =========================================================
-# MHS
+# ENERGIAS (sempre com v definido)
 # =========================================================
-elif regime == "MHS":
-    A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
-    phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
-
-    y = A*np.sin(omega0_r*t + phi)
-    v = A*omega0_r*np.cos(omega0_r*t + phi)
-    a = -A*omega0_r**2*np.sin(omega0_r*t + phi)
-
-    st.latex(
-        rf"y(t) = {A:.3g}\sin({omega0_r}t+{phi:.3g})"
-    )
-    st.latex(
-        rf"v(t) = {A*omega0_r:.3g}\cos({omega0_r}t+{phi:.3g})"
-    )
-    st.latex(
-        rf"a(t) = {-A*omega0_r**2:.3g}\sin({omega0_r}t+{phi:.3g})"
-    )
-
-# =========================================================
-# ENERGIAS
-# =========================================================
-st.header("Energia do sistema")
-
 K = 0.5*m*v**2
 U = 0.5*k*y**2
 E = K + U
@@ -187,3 +226,4 @@ axs[3].legend()
 axs[3].grid(True, alpha=0.3)
 
 st.pyplot(fig)
+``
