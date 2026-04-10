@@ -4,22 +4,13 @@ import matplotlib.pyplot as plt
 import math
 
 # =========================================================
-# CONFIGURAÇÃO DA PÁGINA
+# CONFIGURAÇÃO
 # =========================================================
-st.set_page_config(
-    page_title="Oscilador Mecânico",
-    layout="centered"
-)
+st.set_page_config(page_title="Oscilador Mecânico", layout="centered")
 
-# =========================================================
-# LOGO
-# =========================================================
 st.image("logo_maua.png", use_container_width=True)
 
-# =========================================================
-# TÍTULO
-# =========================================================
-st.title("Oscilador Mecânico")
+st.title("Oscilador Mecânico Física II")
 
 st.markdown(
     """
@@ -31,7 +22,7 @@ st.markdown(
 )
 
 # =========================================================
-# PARÂMETROS DO SISTEMA
+# PARÂMETROS
 # =========================================================
 st.header("Parâmetros do sistema")
 
@@ -53,11 +44,7 @@ omega0 = math.sqrt(k / m)
 gamma_r = float(f"{gamma:.3g}")
 omega0_r = float(f"{omega0:.3g}")
 
-# =========================================================
-# GRANDEZAS DERIVADAS
-# =========================================================
 st.subheader("Grandezas derivadas")
-
 st.latex(r"\gamma = \frac{b}{2m}")
 st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
 
@@ -72,30 +59,27 @@ st.markdown(f"""
 st.header("Classificação do movimento")
 
 if gamma_r == 0:
-    regime = "MHS"
-    st.success("Movimento Harmônico Simples (γ = 0)")
-
+    regime = "mhs"
+    st.success("Movimento harmônico simples (γ = 0)")
 elif gamma_r < omega0_r:
     regime = "sub"
-    st.info("Movimento Harmônico Subamortecido (γ < ω₀)")
-
+    st.info("Movimento harmônico subamortecido (γ < ω₀)")
 elif gamma_r == omega0_r:
     regime = "critico"
-    st.warning("Movimento Criticamente Amortecido (γ = ω₀)")
-
+    st.warning("Movimento criticamente amortecido (γ = ω₀)")
 else:
     regime = "super"
-    st.error("Movimento Superamortecido (γ > ω₀)")
+    st.error("Movimento superamortecido (γ > ω₀)")
 
 # =========================================================
-# SOLUÇÕES
+# EQUAÇÕES
 # =========================================================
 st.header("Equações do movimento")
 
 t = np.linspace(0, 20, 4000)
 
-# ======================= MHS ==============================
-if regime == "MHS":
+# -------- MOVIMENTO HARMÔNICO SIMPLES --------
+if regime == "mhs":
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
@@ -106,16 +90,25 @@ if regime == "MHS":
     T = 2*np.pi / omega0_r
     f = 1 / T
 
-    st.subheader("Grandezas temporais (MHS)")
-    st.latex(r"T = \frac{2\pi}{\omega_0}")
-    st.latex(r"f = \frac{1}{T}")
+    st.latex(r"y(t)=A\sin(\omega_0 t+\phi)")
+    st.latex(rf"y(t)={A:.3g}\sin({omega0_r}t+{fase:.3g})")
+
+    st.latex(r"v(t)=A\omega_0\cos(\omega_0 t+\phi)")
+    st.latex(rf"v(t)={A*omega0_r:.3g}\cos({omega0_r}t+{fase:.3g})")
+
+    st.latex(r"a(t)=-A\omega_0^2\sin(\omega_0 t+\phi)")
+    st.latex(rf"a(t)=-{A*omega0_r**2:.3g}\sin({omega0_r}t+{fase:.3g})")
+
+    st.subheader("Grandezas temporais")
+    st.latex(r"T=\frac{2\pi}{\omega_0}")
+    st.latex(r"f=\frac{1}{T}")
 
     st.markdown(f"""
     - **Período T** = {T:.3g} s  
     - **Frequência f** = {f:.3g} Hz
     """)
 
-# =================== SUBAMORTECIDO ========================
+# -------- SUBAMORTECIDO --------
 elif regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
 
@@ -123,60 +116,53 @@ elif regime == "sub":
     fase = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
     y = C*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
-    v = (
-        C*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
-        - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
-    )
-    a = (
-        C*(gamma_r**2 - omega**2)*np.exp(-gamma_r*t)*np.sin(omega*t + fase)
-        - 2*C*gamma_r*omega*np.exp(-gamma_r*t)*np.cos(omega*t + fase)
-    )
+    v = C*np.exp(-gamma_r*t)*(omega*np.cos(omega*t+fase)-gamma_r*np.sin(omega*t+fase))
+    a = C*np.exp(-gamma_r*t)*((gamma_r**2-omega**2)*np.sin(omega*t+fase)-2*gamma_r*omega*np.cos(omega*t+fase))
 
     T = 2*np.pi / omega
     f = 1 / T
 
-    st.subheader("Grandezas temporais (subamortecido)")
-    st.latex(r"\omega = \sqrt{\omega_0^2 - \gamma^2}")
-    st.latex(r"T = \frac{2\pi}{\omega}")
-    st.latex(r"f = \frac{1}{T}")
+    st.latex(r"y(t)=C e^{-\gamma t}\sin(\omega t+\phi)")
+    st.latex(rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega:.3g}t+{fase:.3g})")
+
+    st.latex(r"\omega=\sqrt{\omega_0^2-\gamma^2}")
+    st.latex(rf"\omega={omega:.3g}\ \text{{rad/s}}")
+
+    st.latex(r"T=\frac{2\pi}{\omega}")
+    st.latex(r"f=\frac{1}{T}")
 
     st.markdown(f"""
-    - **Frequência angular ω** = {omega:.3g} rad/s  
     - **Pseudoperíodo T** = {T:.3g} s  
     - **Frequência f** = {f:.3g} Hz
     """)
 
-# =================== CRÍTICO ==============================
+# -------- CRÍTICO --------
 elif regime == "critico":
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
 
     y = (a0 + b0*t)*np.exp(-gamma_r*t)
-    v = (b0 - gamma_r*(a0 + b0*t))*np.exp(-gamma_r*t)
-    a = (gamma_r**2*(a0 + b0*t) - 2*gamma_r*b0)*np.exp(-gamma_r*t)
+    v = (b0 - gamma_r*(a0+b0*t))*np.exp(-gamma_r*t)
+    a = (gamma_r**2*(a0+b0*t)-2*gamma_r*b0)*np.exp(-gamma_r*t)
 
-# =================== SUPERAMORTECIDO ======================
+    st.latex(r"y(t)=(a+bt)e^{-\gamma t}")
+    st.latex(rf"y(t)=({a0:.3g}+{b0:.3g}t)e^{{-{gamma_r}t}}")
+
+# -------- SUPERAMORTECIDO --------
 else:
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
 
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m)", -5.0, 5.0, 1.0, 0.01)
 
-    y = (
-        a0*np.exp((alpha-gamma_r)*t)
-        + b0*np.exp(-(alpha+gamma_r)*t)
-    )
-    v = (
-        a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t)
-        - b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
-    )
-    a = (
-        a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t)
-        + b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
-    )
+    y = a0*np.exp((alpha-gamma_r)*t)+b0*np.exp(-(alpha+gamma_r)*t)
+    v = a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t)-b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
+    a = a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t)+b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
+
+    st.latex(r"y(t)=e^{-\gamma t}[a e^{\sqrt{\gamma^2-\omega_0^2}t}+b e^{-\sqrt{\gamma^2-\omega_0^2}t}]")
 
 # =========================================================
-# ENERGIAS
+# ENERGIA
 # =========================================================
 K = 0.5*m*v**2
 U = 0.5*k*y**2
@@ -189,22 +175,19 @@ st.header("Gráficos")
 
 fig, axs = plt.subplots(4, 1, figsize=(8, 14), sharex=True)
 
-def plot(ax, data, label):
-    ax.plot(t, data, linewidth=2)
-    ax.axhline(0, color="black", linewidth=1.2)
-    ax.set_ylabel(label)
-    ax.grid(True, alpha=0.3)
-
-plot(axs[0], y, "y (m)")
-plot(axs[1], v, "v (m/s)")
-plot(axs[2], a, "a (m/s²)")
+axs[0].plot(t, y)
+axs[1].plot(t, v)
+axs[2].plot(t, a)
 
 axs[3].plot(t, K, label="Energia Cinética")
 axs[3].plot(t, U, label="Energia Potencial")
 axs[3].plot(t, E, label="Energia Mecânica Total")
-axs[3].set_ylabel("Energia (J)")
-axs[3].set_xlabel("Tempo (s)")
 axs[3].legend()
-axs[3].grid(True, alpha=0.3)
+
+for ax, label in zip(axs, ["y (m)", "v (m/s)", "a (m/s²)", "Energia (J)"]):
+    ax.set_ylabel(label)
+    ax.grid(True)
+
+axs[3].set_xlabel("Tempo (s)")
 
 st.pyplot(fig)
