@@ -3,13 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+# =========================================================
+# CONFIGURAÇÃO DA PÁGINA
+# =========================================================
 st.set_page_config(
     page_title="Oscilador Mecânico",
     layout="centered"
 )
 
 # =========================================================
-# TÍTULO
+# LOGO INSTITUCIONAL
+# =========================================================
+st.image("logo_maua.png", use_container_width=True)
+
+# =========================================================
+# TÍTULO E TEXTO INTRODUTÓRIO
 # =========================================================
 st.title("Oscilador Mecânico")
 
@@ -23,7 +31,7 @@ st.markdown(
 )
 
 # =========================================================
-# PARÂMETROS
+# PARÂMETROS DO SISTEMA
 # =========================================================
 st.header("Parâmetros do sistema")
 
@@ -46,29 +54,49 @@ gamma_r = float(f"{gamma:.3g}")
 omega0_r = float(f"{omega0:.3g}")
 
 # =========================================================
-# CLASSIFICAÇÃO
+# GRANDEZAS DERIVADAS
+# =========================================================
+st.subheader("Grandezas derivadas")
+
+st.latex(r"\gamma = \frac{b}{2m}")
+st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
+
+st.markdown(f"""
+- **γ = {gamma_r} rad/s**
+- **ω₀ = {omega0_r} rad/s**
+""")
+
+# =========================================================
+# CLASSIFICAÇÃO DO MOVIMENTO
 # =========================================================
 st.header("Classificação do movimento")
 
 if gamma_r == 0:
     regime = "MHS"
-elif gamma_r == omega0_r:
-    regime = "critico"
+    st.success("Movimento Harmônico Simples (γ = 0)")
+
 elif gamma_r < omega0_r:
     regime = "sub"
+    st.info("Movimento Harmônico Subamortecido (γ < ω₀)")
+
+elif gamma_r == omega0_r:
+    regime = "critico"
+    st.warning("Movimento Criticamente Amortecido (γ = ω₀)")
+
 else:
     regime = "super"
-
-st.write(f"**γ = {gamma_r} rad/s**, **ω₀ = {omega0_r} rad/s**")
+    st.error("Movimento Superamortecido (γ > ω₀)")
 
 # =========================================================
-# SOLUÇÕES
+# SOLUÇÕES TEMPORAIS
 # =========================================================
-t = np.linspace(0, 20, 4000)
-
 st.header("Equações do movimento")
 
-# ====================== SUBAMORTECIDO =====================
+t = np.linspace(0, 20, 4000)
+
+# =========================================================
+# SUBAMORTECIDO
+# =========================================================
 if regime == "sub":
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
     omega_r = float(f"{omega:.3g}")
@@ -76,18 +104,19 @@ if regime == "sub":
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
     phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
-    y = C * np.exp(-gamma_r*t) * np.sin(omega_r*t + phi)
+    y = C*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
+
     v = (
         C*omega_r*np.exp(-gamma_r*t)*np.cos(omega_r*t + phi)
         - C*gamma_r*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
     )
 
-    c1 = -C*omega_r**2 + C*gamma_r**2
-    c2 = -2*C*gamma_r*omega_r
+    c_sin = C*(gamma_r**2 - omega_r**2)
+    c_cos = -2*C*gamma_r*omega_r
 
     a = (
-        c1*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
-        + c2*np.exp(-gamma_r*t)*np.cos(omega_r*t + phi)
+        c_sin*np.exp(-gamma_r*t)*np.sin(omega_r*t + phi)
+        + c_cos*np.exp(-gamma_r*t)*np.cos(omega_r*t + phi)
     )
 
     st.latex(
@@ -98,11 +127,13 @@ if regime == "sub":
         rf" - {C*gamma_r:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
     )
     st.latex(
-        rf"a(t) = {c1:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
-        rf" + {c2:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{phi:.3g})"
+        rf"a(t) = {c_sin:.3g}e^{{-{gamma_r}t}}\sin({omega_r}t+{phi:.3g})"
+        rf" + {c_cos:.3g}e^{{-{gamma_r}t}}\cos({omega_r}t+{phi:.3g})"
     )
 
-# ======================== MHS =============================
+# =========================================================
+# MHS
+# =========================================================
 elif regime == "MHS":
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     phi = st.slider("Fase φ (rad)", 0.0, 2*np.pi, 0.0, 0.01)
@@ -122,8 +153,10 @@ elif regime == "MHS":
     )
 
 # =========================================================
-# ENERGIA
+# ENERGIAS
 # =========================================================
+st.header("Energia do sistema")
+
 K = 0.5*m*v**2
 U = 0.5*k*y**2
 E = K + U
