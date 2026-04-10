@@ -83,26 +83,31 @@ st.header("Equações do movimento")
 # MHS
 # =========================================================
 if regime == "mhs":
+
     A = st.slider("Amplitude A (m)", 0.0, 5.0, 1.0, 0.01)
     phi = st.slider("Constante de fase (rad)", 0.0, 2*np.pi, 0.0, 0.01)
 
     y = A*np.sin(omega0_r*t + phi)
     v = A*omega0_r*np.cos(omega0_r*t + phi)
-    a = -A*omega0_r**2*np.sin(omega0_r*t + phi)
+    a = -A*(omega0_r**2)*np.sin(omega0_r*t + phi)
 
-    st.latex(r"y(t)=A\sin(\omega_0 t+\phi)")
+    w2 = omega0_r**2
+    Aw = A*omega0_r
+
+    st.latex(r"y(t)=A\sin(\omega_0t+\phi)")
     st.latex(rf"y(t)={A:.3g}\sin({omega0_r}t+{phi:.3g})")
 
-    st.latex(r"v(t)=A\omega_0\cos(\omega_0 t+\phi)")
-    st.latex(rf"v(t)={A:.3g}\cdot{omega0_r}\cos({omega0_r}t+{phi:.3g})")
+    st.latex(r"v(t)=A\omega_0\cos(\omega_0t+\phi)")
+    st.latex(rf"v(t)={Aw:.4f}\cos({omega0_r}t+{phi:.3g})")
 
-    st.latex(r"a(t)=-A\omega_0^2\sin(\omega_0 t+\phi)")
-    st.latex(rf"a(t)=-{A:.3g}\cdot{omega0_r**2:.3g}\sin({omega0_r}t+{phi:.3g})")
+    st.latex(r"a(t)=-A\omega_0^2\sin(\omega_0t+\phi)")
+    st.latex(rf"a(t)=-{A*w2:.4f}\sin({omega0_r}t+{phi:.3g})")
 
 # =========================================================
 # SUBAMORTECIDO
 # =========================================================
 elif regime == "sub":
+
     omega = math.sqrt(omega0_r**2 - gamma_r**2)
 
     C = st.slider("Constante C (m)", 0.0, 5.0, 1.0, 0.01)
@@ -112,29 +117,31 @@ elif regime == "sub":
     v = C*np.exp(-gamma_r*t)*(omega*np.cos(omega*t+phi)-gamma_r*np.sin(omega*t+phi))
     a = C*np.exp(-gamma_r*t)*((gamma_r**2-omega**2)*np.sin(omega*t+phi)-2*gamma_r*omega*np.cos(omega*t+phi))
 
-    st.latex(r"y(t)=C e^{-\gamma t}\sin(\omega t+\phi)")
-    st.latex(rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega:.3g}t+{phi:.3g})")
+    A1 = gamma_r**2 - omega**2
+    A2 = 2*gamma_r*omega
 
-    st.latex(r"v(t)=C e^{-\gamma t}[\omega\cos(\omega t+\phi)-\gamma\sin(\omega t+\phi)]")
-    st.latex(
-        rf"v(t)={C:.3g}e^{{-{gamma_r}t}}[{omega:.3g}\cos({omega:.3g}t+{phi:.3g})-{gamma_r}\sin({omega:.3g}t+{phi:.3g})]"
-    )
+    st.latex(r"y(t)=Ce^{-\gamma t}\sin(\omega t+\phi)")
+    st.latex(rf"y(t)={C:.3g}e^{{-{gamma_r}t}}\sin({omega:.4f}t+{phi:.3g})")
 
-    st.latex(r"a(t)=C e^{-\gamma t}[(\gamma^2-\omega^2)\sin(\omega t+\phi)-2\gamma\omega\cos(\omega t+\phi)]")
-    st.latex(
-        rf"a(t)={C:.3g}e^{{-{gamma_r}t}}[({gamma_r}^2-{omega:.3g}^2)\sin({omega:.3g}t+{phi:.3g})-2\cdot{gamma_r}\cdot{omega:.3g}\cos({omega:.3g}t+{phi:.3g})]"
-    )
+    st.latex(r"v(t)=Ce^{-\gamma t}[\omega\cos(\omega t+\phi)-\gamma\sin(\omega t+\phi)]")
+    st.latex(rf"v(t)={C:.3g}e^{{-{gamma_r}t}}[{omega:.4f}\cos({omega:.4f}t+{phi:.3g})-{gamma_r}\sin({omega:.4f}t+{phi:.3g})]")
+
+    st.latex(r"a(t)=Ce^{-\gamma t}[(\gamma^2-\omega^2)\sin(\omega t+\phi)-2\gamma\omega\cos(\omega t+\phi)]")
+    st.latex(rf"a(t)={C:.3g}e^{{-{gamma_r}t}}[{A1:.4f}\sin({omega:.4f}t+{phi:.3g})-{A2:.4f}\cos({omega:.4f}t+{phi:.3g})]")
 
 # =========================================================
-# CRITICAMENTE AMORTECIDO
+# CRÍTICO
 # =========================================================
 elif regime == "critico":
+
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
     b0 = st.slider("Constante b (m/s)", -5.0, 5.0, 0.0, 0.01)
 
     y = (a0+b0*t)*np.exp(-gamma_r*t)
     v = (b0-gamma_r*(a0+b0*t))*np.exp(-gamma_r*t)
     a = (gamma_r**2*(a0+b0*t)-2*gamma_r*b0)*np.exp(-gamma_r*t)
+
+    g2 = gamma_r**2
 
     st.latex(r"y(t)=(a+bt)e^{-\gamma t}")
     st.latex(rf"y(t)=({a0:.3g}+{b0:.3g}t)e^{{-{gamma_r}t}}")
@@ -143,12 +150,13 @@ elif regime == "critico":
     st.latex(rf"v(t)=({b0:.3g}-{gamma_r}({a0:.3g}+{b0:.3g}t))e^{{-{gamma_r}t}}")
 
     st.latex(r"a(t)=[\gamma^2(a+bt)-2\gamma b]e^{-\gamma t}")
-    st.latex(rf"a(t)=({gamma_r}^2({a0:.3g}+{b0:.3g}t)-2{gamma_r}{b0:.3g})e^{{-{gamma_r}t}}")
+    st.latex(rf"a(t)=({g2:.4f}({a0:.3g}+{b0:.3g}t)-{2*gamma_r*b0:.4f})e^{{-{gamma_r}t}}")
 
 # =========================================================
 # SUPERAMORTECIDO
 # =========================================================
 else:
+
     alpha = math.sqrt(gamma_r**2 - omega0_r**2)
 
     a0 = st.slider("Constante a (m)", -5.0, 5.0, 1.0, 0.01)
@@ -158,20 +166,17 @@ else:
     v = a0*(alpha-gamma_r)*np.exp((alpha-gamma_r)*t)-b0*(alpha+gamma_r)*np.exp(-(alpha+gamma_r)*t)
     a = a0*(alpha-gamma_r)**2*np.exp((alpha-gamma_r)*t)+b0*(alpha+gamma_r)**2*np.exp(-(alpha+gamma_r)*t)
 
-    st.latex(r"y(t)=a e^{(\alpha-\gamma)t}+b e^{-(\alpha+\gamma)t}")
-    st.latex(
-        rf"y(t)={a0:.3g}e^{{({alpha:.3g}-{gamma_r})t}}+{b0:.3g}e^{{-({alpha:.3g}+{gamma_r})t}}"
-    )
+    r1 = alpha - gamma_r
+    r2 = alpha + gamma_r
+
+    st.latex(r"y(t)=ae^{(\alpha-\gamma)t}+be^{-(\alpha+\gamma)t}")
+    st.latex(rf"y(t)={a0:.3g}e^{{{r1:.4f}t}}+{b0:.3g}e^{{-{r2:.4f}t}}")
 
     st.latex(r"v(t)=a(\alpha-\gamma)e^{(\alpha-\gamma)t}-b(\alpha+\gamma)e^{-(\alpha+\gamma)t}")
-    st.latex(
-        rf"v(t)={a0:.3g}({alpha:.3g}-{gamma_r})e^{{({alpha:.3g}-{gamma_r})t}}-{b0:.3g}({alpha:.3g}+{gamma_r})e^{{-({alpha:.3g}+{gamma_r})t}}"
-    )
+    st.latex(rf"v(t)={a0*r1:.4f}e^{{{r1:.4f}t}}-{b0*r2:.4f}e^{{-{r2:.4f}t}}")
 
     st.latex(r"a(t)=a(\alpha-\gamma)^2e^{(\alpha-\gamma)t}+b(\alpha+\gamma)^2e^{-(\alpha+\gamma)t}")
-    st.latex(
-        rf"a(t)={a0:.3g}({alpha:.3g}-{gamma_r})^2e^{{({alpha:.3g}-{gamma_r})t}}+{b0:.3g}({alpha:.3g}+{gamma_r})^2e^{{-({alpha:.3g}+{gamma_r})t}}"
-    )
+    st.latex(rf"a(t)={a0*r1*r1:.4f}e^{{{r1:.4f}t}}+{b0*r2*r2:.4f}e^{{-{r2:.4f}t}}")
 
 # =========================================================
 # ENERGIA
