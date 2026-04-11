@@ -11,19 +11,27 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+def round_sig(x, sig=3):
+    """Arredonda para 'sig' algarismos significativos."""
+    x = float(x)
+    if x == 0.0:
+        return 0.0
+    return round(x, sig - int(np.floor(np.log10(abs(x)))) - 1)
+
 def fmt3(x):
-    """Formata com 3 algarismos significativos."""
+    """Formata com 3 algarismos significativos (texto)."""
     try:
         if x is None or (isinstance(x, float) and (np.isnan(x) or np.isinf(x))):
             return "—"
-        return f"{x:.3g}"
+        return f"{float(x):.3g}"
     except Exception:
         return str(x)
 
 def sgn_comp(a, b, tol=None):
     """Retorna '<', '>' ou '=' com tolerância numérica."""
+    a = float(a); b = float(b)
     if tol is None:
-        tol = 1e-9 * max(1.0, abs(a), abs(b))
+        tol = 1e-12 * max(1.0, abs(a), abs(b))
     if abs(a - b) <= tol:
         return "="
     return "<" if a < b else ">"
@@ -60,7 +68,6 @@ def synced_slider_number(label, key, min_value, max_value, value, step, unit="",
 
     def from_number():
         v = float(st.session_state[number_key])
-        # Clamp por segurança
         v = min(max(v, min_value), max_value)
         st.session_state[key] = v
         st.session_state[slider_key] = float(st.session_state[key])
@@ -151,8 +158,13 @@ if m <= 0 or k < 0:
     st.error("A massa deve ser positiva e a constante elástica não pode ser negativa.")
     st.stop()
 
-gamma = b / (2.0 * m)   # s^-1 (rad/s por convenção aqui)
-omega0 = np.sqrt(k / m) # rad/s
+# valores "exatos" (internos)
+gamma_exact = b / (2.0 * m)          # s^-1 (rad/s por convenção aqui)
+omega0_exact = np.sqrt(k / m)        # rad/s
+
+# valores arredondados (3 AS) usados para classificação e apresentação
+gamma = round_sig(gamma_exact, 3)
+omega0 = round_sig(omega0_exact, 3)
 
 comp = sgn_comp(gamma, omega0)
 
@@ -173,22 +185,13 @@ with c1:
     st.latex(r"\gamma = \frac{b}{2m}")
     st.write(f"**γ = {fmt3(gamma)} rad/s**")
 with c2:
-    st.subheader("Frequência natural")
+    st.subheader("Frequência angular natural")
     st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
     st.write(f"**ω₀ = {fmt3(omega0)} rad/s**")
 with c3:
     st.subheader("Comparação e tipo de movimento")
     st.write(f"**γ {comp} ω₀**")
     st.success(f"**{classificacao}**")
-
-# Mostrar também a comparação com valores
-st.markdown("### Valores calculados")
-st.write(
-    f"- b = **{fmt3(b)} kg/s**, m = **{fmt3(m)} kg**, k = **{fmt3(k)} N/m**\n"
-    f"- γ = **{fmt3(gamma)} rad/s**\n"
-    f"- ω₀ = **{fmt3(omega0)} rad/s**\n"
-    f"- Comparação: **{fmt3(gamma)} {comp} {fmt3(omega0)}**"
-)
 
 st.divider()
 
@@ -202,11 +205,11 @@ f = None
 if classificacao == "movimento harmônico simples":
     st.header("Cálculos")
     st.latex(r"T = \frac{2\pi}{\omega_0}")
-    T = 2 * np.pi / omega0
+    T = 2 * np.pi / omega0 if omega0 > 0 else np.nan
     st.write(f"**Período:** T = **{fmt3(T)} s**")
 
     st.latex(r"f = \frac{1}{T}")
-    f = 1.0 / T
+    f = 1.0 / T if np.isfinite(T) and T > 0 else np.nan
     st.write(f"**Frequência:** f = **{fmt3(f)} Hz**")
 
 elif classificacao == "movimento harmônico subamortecido":
@@ -214,7 +217,7 @@ elif classificacao == "movimento harmônico subamortecido":
     st.latex(r"\omega = \sqrt{\omega_0^2 - \gamma^2}")
     inside = omega0**2 - gamma**2
     if inside <= 0:
-        st.warning("A expressão ω² = ω₀² − γ² ficou não-positiva por arredondamento numérico. Ajuste b, m, k.")
+        st.warning("Com os valores arredondados (3 AS), ω² = ω₀² − γ² ficou não-positiva. Ajuste b, m, k.")
         omega = np.nan
     else:
         omega = np.sqrt(inside)
@@ -222,14 +225,13 @@ elif classificacao == "movimento harmônico subamortecido":
     st.write(f"**Frequência angular amortecida:** ω = **{fmt3(omega)} rad/s**")
 
     st.latex(r"T = \frac{2\pi}{\omega}")
-    T = 2 * np.pi / omega if omega and np.isfinite(omega) and omega > 0 else np.nan
+    T = 2 * np.pi / omega if np.isfinite(omega) and omega > 0 else np.nan
     st.write(f"**Pseudoperíodo:** T = **{fmt3(T)} s**")
 
     st.latex(r"f = \frac{1}{T}")
-    f = 1.0 / T if T and np.isfinite(T) and T > 0 else np.nan
+    f = 1.0 / T if np.isfinite(T) and T > 0 else np.nan
     st.write(f"**Frequência:** f = **{fmt3(f)} Hz**")
 
-# Nos casos crítico e superamortecido: não exibe seção Cálculos
 st.divider()
 
 # -----------------------------
@@ -237,17 +239,14 @@ st.divider()
 # -----------------------------
 st.header("Equações do movimento")
 
-# Domínio para sliders dos parâmetros das soluções
 LEN_MIN, LEN_MAX = -10.0, 10.0
 AMP_MIN, AMP_MAX = 0.0, 10.0
 PHI_MIN, PHI_MAX = -2*np.pi, 2*np.pi
 
-# Valores iniciais
-if "A" not in st.session_state: st.session_state["A"] = 1.0
-if "C" not in st.session_state: st.session_state["C"] = 1.0
-if "phi" not in st.session_state: st.session_state["phi"] = 0.0
-if "a_const" not in st.session_state: st.session_state["a_const"] = 1.0
-if "B_const" not in st.session_state: st.session_state["B_const"] = 0.0
+# Iniciais persistentes
+for k0, v0 in [("A", 1.0), ("C", 1.0), ("phi", 0.0), ("a_const", 1.0), ("B_const", 0.0)]:
+    if k0 not in st.session_state:
+        st.session_state[k0] = v0
 
 def slider_param(label, key, minv, maxv, val, step, unit=""):
     v = st.slider(
@@ -261,12 +260,18 @@ def slider_param(label, key, minv, maxv, val, step, unit=""):
     )
     return float(v)
 
-# Define funções x(t), v(t), a(t) conforme o caso
 def build_functions():
-    global omega
+    """
+    Retorna x(t), v(t), a(t), e strings latex:
+    - eq_letters: simbólicas
+    - eq_numbers: numéricas (bem desenvolvidas, com multiplicações feitas)
+    """
     if classificacao == "movimento harmônico simples":
         A = slider_param("Amplitude A", "A", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
         phi = slider_param("Constante de fase φ", "phi", PHI_MIN, PHI_MAX, 0.0, 0.001, "rad")
+
+        Aom = A * omega0
+        Aom2 = A * (omega0**2)
 
         def x(t): return A*np.sin(omega0*t + phi)
         def v(t): return A*omega0*np.cos(omega0*t + phi)
@@ -278,94 +283,113 @@ def build_functions():
             "a": r"a(t) = -A\omega_0^2\sin(\omega_0 t + \varphi)",
         }
         eq_numbers = {
-            "x": rf"x(t) = {fmt3(A)}\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
-            "v": rf"v(t) = {fmt3(A)}\cdot {fmt3(omega0)}\cos\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
-            "a": rf"a(t) = -{fmt3(A)}\cdot ({fmt3(omega0)})^2\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
+            "x": rf"x(t) = {fmt3(A)}\,\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
+            "v": rf"v(t) = {fmt3(Aom)}\,\cos\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
+            "a": rf"a(t) = -{fmt3(Aom2)}\,\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
         }
-        params = {"A": A, "phi": phi}
+        return x, v, a, eq_letters, eq_numbers
 
     elif classificacao == "movimento harmônico subamortecido":
-        # garante omega
         inside = omega0**2 - gamma**2
         omega_loc = np.sqrt(inside) if inside > 0 else np.nan
-        omega = omega_loc
 
         C = slider_param("Constante C", "C", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
         phi = slider_param("Constante de fase φ", "phi", PHI_MIN, PHI_MAX, 0.0, 0.001, "rad")
 
+        Cw = C * omega_loc if np.isfinite(omega_loc) else np.nan
+        Cg = C * gamma
+        Cg2_m_Cw2 = C * (gamma**2 - omega_loc**2) if np.isfinite(omega_loc) else np.nan
+        twoCgw = 2 * C * gamma * omega_loc if np.isfinite(omega_loc) else np.nan
+
         def x(t):
-            return C*np.exp(-gamma*t)*np.sin(omega*t + phi)
+            return C*np.exp(-gamma*t)*np.sin(omega_loc*t + phi)
 
         def v(t):
-            s = np.sin(omega*t + phi)
-            c = np.cos(omega*t + phi)
-            return C*np.exp(-gamma*t)*(omega*c - gamma*s)
+            s = np.sin(omega_loc*t + phi)
+            c = np.cos(omega_loc*t + phi)
+            return np.exp(-gamma*t)*(C*omega_loc*c - C*gamma*s)
 
         def a(t):
-            s = np.sin(omega*t + phi)
-            c = np.cos(omega*t + phi)
-            return C*np.exp(-gamma*t)*((gamma**2 - omega**2)*s - 2*gamma*omega*c)
+            s = np.sin(omega_loc*t + phi)
+            c = np.cos(omega_loc*t + phi)
+            return np.exp(-gamma*t)*(C*(gamma**2 - omega_loc**2)*s - 2*C*gamma*omega_loc*c)
 
         eq_letters = {
             "x": r"x(t) = C\,e^{-\gamma t}\,\sin(\omega t+\varphi)",
-            "v": r"v(t) = C\,e^{-\gamma t}\left(\omega\cos(\omega t+\varphi)-\gamma\sin(\omega t+\varphi)\right)",
-            "a": r"a(t) = C\,e^{-\gamma t}\left((\gamma^2-\omega^2)\sin(\omega t+\varphi)-2\gamma\omega\cos(\omega t+\varphi)\right)",
+            "v": r"v(t) = e^{-\gamma t}\left(C\omega\cos(\omega t+\varphi)-C\gamma\sin(\omega t+\varphi)\right)",
+            "a": r"a(t) = e^{-\gamma t}\left(C(\gamma^2-\omega^2)\sin(\omega t+\varphi)-2C\gamma\omega\cos(\omega t+\varphi)\right)",
         }
         eq_numbers = {
-            "x": rf"x(t) = {fmt3(C)}\,e^{{-{fmt3(gamma)}t}}\,\sin\!\left({fmt3(omega)}\,t + {fmt3(phi)}\right)",
-            "v": rf"v(t) = {fmt3(C)}\,e^{{-{fmt3(gamma)}t}}\left({fmt3(omega)}\cos({fmt3(omega)}t+{fmt3(phi)})-{fmt3(gamma)}\sin({fmt3(omega)}t+{fmt3(phi)})\right)",
-            "a": rf"a(t) = {fmt3(C)}\,e^{{-{fmt3(gamma)}t}}\left((({fmt3(gamma)})^2-({fmt3(omega)})^2)\sin({fmt3(omega)}t+{fmt3(phi)})-2\cdot{fmt3(gamma)}\cdot{fmt3(omega)}\cos({fmt3(omega)}t+{fmt3(phi)})\right)",
+            "x": rf"x(t) = {fmt3(C)}\,e^{{-{fmt3(gamma)}t}}\,\sin\!\left({fmt3(omega_loc)}\,t + {fmt3(phi)}\right)",
+            "v": rf"v(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(Cw)}\cos({fmt3(omega_loc)}t+{fmt3(phi)}) - {fmt3(Cg)}\sin({fmt3(omega_loc)}t+{fmt3(phi)})\right)",
+            "a": rf"a(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(Cg2_m_Cw2)}\sin({fmt3(omega_loc)}t+{fmt3(phi)}) - {fmt3(twoCgw)}\cos({fmt3(omega_loc)}t+{fmt3(phi)})\right)",
         }
-        params = {"C": C, "phi": phi, "omega": omega}
+        return x, v, a, eq_letters, eq_numbers
 
     elif classificacao == "movimento criticamente amortecido":
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m/s")
 
+        # Desenvolvimentos úteis:
+        B_minus_ga = B - gamma*a0
+        gB = gamma*B
+        g2a_minus_2gB = (gamma**2)*a0 - 2*gamma*B
+        g2B = (gamma**2)*B
+
         def x(t): return (a0 + B*t)*np.exp(-gamma*t)
         def v(t): return np.exp(-gamma*t)*(B - gamma*(a0 + B*t))
-        def a(t): return np.exp(-gamma*t)*(gamma**2*(a0 + B*t) - 2*gamma*B)
+        def a(t): return np.exp(-gamma*t)*((gamma**2)*(a0 + B*t) - 2*gamma*B)
 
         eq_letters = {
             "x": r"x(t) = (a + Bt)\,e^{-\gamma t}",
-            "v": r"v(t) = e^{-\gamma t}\left(B-\gamma(a+Bt)\right)",
-            "a": r"a(t) = e^{-\gamma t}\left(\gamma^2(a+Bt)-2\gamma B\right)",
+            "v": r"v(t) = e^{-\gamma t}\left((B-\gamma a)-(\gamma B)t\right)",
+            "a": r"a(t) = e^{-\gamma t}\left((\gamma^2 a-2\gamma B)+(\gamma^2 B)t\right)",
         }
         eq_numbers = {
             "x": rf"x(t) = \left({fmt3(a0)} + {fmt3(B)}t\right)e^{{-{fmt3(gamma)}t}}",
-            "v": rf"v(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(B)}-{fmt3(gamma)}({fmt3(a0)}+{fmt3(B)}t)\right)",
-            "a": rf"a(t) = e^{{-{fmt3(gamma)}t}}\left(({fmt3(gamma)})^2({fmt3(a0)}+{fmt3(B)}t)-2\cdot{fmt3(gamma)}\cdot{fmt3(B)}\right)",
+            "v": rf"v(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(B_minus_ga)} - {fmt3(gB)}t\right)",
+            "a": rf"a(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(g2a_minus_2gB)} + {fmt3(g2B)}t\right)",
         }
-        params = {"a": a0, "B": B}
+        return x, v, a, eq_letters, eq_numbers
 
-    else:  # superamortecido
-        alpha = np.sqrt(max(0.0, gamma**2 - omega0**2))
+    else:  # movimento superamortecido
+        # s = sqrt(gamma^2 - omega0^2) (não apresentado como "novo parâmetro", só aparece como raiz nas equações)
+        rad = gamma**2 - omega0**2
+        s = np.sqrt(rad) if rad > 0 else 0.0
+
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m")
 
-        lam1 = -gamma + alpha
-        lam2 = -gamma - alpha
+        # Forma desenvolvida (sem introduzir alfa):
+        # x = a e^{(s-γ)t} + B e^{-(s+γ)t}
+        lam1 = (s - gamma)
+        lam2 = -(s + gamma)
+
+        # Coeficientes desenvolvidos para v e a:
+        c1 = a0 * lam1
+        c2 = B * lam2
+        d1 = a0 * (lam1**2)
+        d2 = B * (lam2**2)
 
         def x(t): return a0*np.exp(lam1*t) + B*np.exp(lam2*t)
-        def v(t): return a0*lam1*np.exp(lam1*t) + B*lam2*np.exp(lam2*t)
-        def a(t): return a0*(lam1**2)*np.exp(lam1*t) + B*(lam2**2)*np.exp(lam2*t)
+        def v(t): return c1*np.exp(lam1*t) + c2*np.exp(lam2*t)
+        def a(t): return d1*np.exp(lam1*t) + d2*np.exp(lam2*t)
 
-        # Fórmula na forma que você descreveu (equivalente)
         eq_letters = {
-            "x": r"x(t)=e^{-\gamma t}\left(a\,e^{\alpha t}+B\,e^{-\alpha t}\right),\quad \alpha=\sqrt{\gamma^2-\omega_0^2}",
-            "v": r"v(t)=\frac{dx}{dt}",
-            "a": r"a(t)=\frac{d^2x}{dt^2}",
+            "x": r"x(t)= a\,e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}+B\,e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
+            "v": r"v(t)= a\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}-B\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
+            "a": r"a(t)= a\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)^2e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}+B\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)^2e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
         }
+
+        # Numéricas bem desenvolvidas (coeficientes e expoentes combinados)
         eq_numbers = {
             "x": rf"x(t)= {fmt3(a0)}\,e^{{({fmt3(lam1)})t}} + {fmt3(B)}\,e^{{({fmt3(lam2)})t}}",
-            "v": rf"v(t)= {fmt3(a0)}({fmt3(lam1)})e^{{({fmt3(lam1)})t}} + {fmt3(B)}({fmt3(lam2)})e^{{({fmt3(lam2)})t}}",
-            "a": rf"a(t)= {fmt3(a0)}({fmt3(lam1)})^2 e^{{({fmt3(lam1)})t}} + {fmt3(B)}({fmt3(lam2)})^2 e^{{({fmt3(lam2)})t}}",
+            "v": rf"v(t)= {fmt3(c1)}\,e^{{({fmt3(lam1)})t}} + {fmt3(c2)}\,e^{{({fmt3(lam2)})t}}",
+            "a": rf"a(t)= {fmt3(d1)}\,e^{{({fmt3(lam1)})t}} + {fmt3(d2)}\,e^{{({fmt3(lam2)})t}}",
         }
-        params = {"a": a0, "B": B, "alpha": alpha}
+        return x, v, a, eq_letters, eq_numbers
 
-    return x, v, a, eq_letters, eq_numbers, params
-
-x_fun, v_fun, a_fun, eqL, eqN, params = build_functions()
+x_fun, v_fun, a_fun, eqL, eqN = build_functions()
 
 st.markdown("### Equações (forma simbólica)")
 st.latex(eqL["x"])
@@ -384,12 +408,11 @@ st.divider()
 # -----------------------------
 st.header("Gráficos")
 
-# Define um tempo máximo automático para visualizar bem
 def choose_tmax():
     # Se existe período utilizável, mostre ~5 ciclos
     if T is not None and np.isfinite(T) and T > 0:
         return float(min(50.0, max(2.0, 5.0*T)))
-    # Caso amortecido: escala ~ (decaimento)
+    # Caso amortecido: escala ~ decaimento
     if gamma is not None and np.isfinite(gamma) and gamma > 0:
         return float(min(50.0, max(2.0, 10.0/gamma)))
     return 10.0
@@ -408,7 +431,7 @@ Ep = 0.5 * k * (x**2)
 Ec = 0.5 * m * (v**2)
 Em = Ep + Ec
 
-# Layout de gráficos: 2 linhas (posição/velocidade), (aceleração/energia)
+# Posição
 fig1, ax1 = plt.subplots(figsize=(8, 3.6))
 ax1.plot(t, x, linewidth=2.2)
 ax1.set_title("Posição x(t)")
@@ -417,6 +440,7 @@ ax1.set_ylabel("x (m)")
 ax1.set_xlim(0, tmax)
 style_axes(ax1)
 
+# Velocidade
 fig2, ax2 = plt.subplots(figsize=(8, 3.6))
 ax2.plot(t, v, linewidth=2.2)
 ax2.set_title("Velocidade v(t)")
@@ -425,6 +449,7 @@ ax2.set_ylabel("v (m/s)")
 ax2.set_xlim(0, tmax)
 style_axes(ax2)
 
+# Aceleração
 fig3, ax3 = plt.subplots(figsize=(8, 3.6))
 ax3.plot(t, acc, linewidth=2.2)
 ax3.set_title("Aceleração a(t)")
@@ -433,6 +458,7 @@ ax3.set_ylabel("a (m/s²)")
 ax3.set_xlim(0, tmax)
 style_axes(ax3)
 
+# Energia (3 curvas)
 fig4, ax4 = plt.subplots(figsize=(8, 3.6))
 ax4.plot(t, Ep, linewidth=2.2, color="#1f77b4", label="Energia potencial (Ep)")
 ax4.plot(t, Ec, linewidth=2.2, color="#ff7f0e", label="Energia cinética (Ec)")
@@ -444,7 +470,7 @@ ax4.set_xlim(0, tmax)
 ax4.legend()
 style_axes(ax4)
 
-# Exibe em colunas para ficar organizado
+# Exibição
 g1, g2 = st.columns(2)
 with g1:
     st.pyplot(fig1, use_container_width=True)
@@ -456,8 +482,3 @@ with g3:
     st.pyplot(fig3, use_container_width=True)
 with g4:
     st.pyplot(fig4, use_container_width=True)
-
-st.caption(
-    f"Escala de tempo automática: 0 a {fmt3(tmax)} s. "
-    "Os eixos estão destacados em preto para não confundir com a grade."
-)
