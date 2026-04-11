@@ -451,71 +451,140 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / lam_slow)))
 
 # --- Escala de tempo (AUTO / MANUAL) ---
+# -----------------------------
+# Escala de tempo (AUTO / MANUAL) - versão sem StreamlitAPIException
+# -----------------------------
 st.subheader("Escala de tempo")
 
-# recomendado (recalculado sempre que b,m,k mudam)
-tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
-st.session_state["tmax_rec"] = float(tmax_rec)
+def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
+    """
+    Recomenda tmax baseado na escala física dominante.
+    Superamortecido: usa o modo lento lam_slow = gamma - sqrt(gamma^2 - omega0^2).
+    """
+    HARD_CAP = 1e9          # permite tempos MUITO grandes (≈ 31 anos)
+    HARD_FLOOR = 2.0
 
-# estado inicial
+    # Se existe período utilizável, ~5 ciclos
+    if T is not None and np.isfinite(T) and T > 0:
+        return float(min(HARD_CAP, max(HARD_FLOOR, 5.0 * T)))
+
+    g = float(gamma_exact)
+    w0 = float(omega0_exact)
+
+    if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
+        return 10.0
+
+    # praticamente sem amortecimento
+    if g < 1e-12 and w0 > 0:
+        T0 = 2 * np.pi / w0
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 * T0)))
+
+    # subamortecido / crítico: escala ~ envelope e^{-γt}
+    if g <= w0 + 1e-12:
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / g))) if g > 0 else 10.0
+
+    # superamortecido: modo lento domina
+    s = np.sqrt(max(0.0, g*g - w0*w0))
+    lam_slow = g - s  # pode ser MUITO pequeno
+
+    if lam_slow < 1e-18:
+        # extremamente lento (quase crítico com arredondamentos ou ω0<<γ)
+        return 1e6
+
+    return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / lam_slow)))
+
+# recomendado recalculado a cada rerun
+tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
+
+# estados
 if "tmax_auto" not in st.session_state:
     st.session_state["tmax_auto"] = True  # vem marcado
-if "tmax_user" not in st.session_state:
-    st.session_state["tmax_user"] = float(tmax_rec)
 
-def reset_tmax():
-    st.session_state["tmax_user"] = float(st.session_state.get("tmax_rec", 10.0))
+# valor mestre
+if "tmax" not in st.session_state:
+    st.session_state["tmax"] = float(tmax_rec)
 
-# Se estiver em AUTO, "gruda" no recomendado automaticamente
+# widgets (chaves separadas)
+if "tmax_slider" not in st.session_state:
+    st.session_state["tmax_slider"] = float(st.session_state["tmax"])
+if "tmax_num" not in st.session_state:
+    st.session_state["tmax_num"] = float(st.session_state["tmax"])
+
+def apply_recommended():
+    """Seta tudo para o recomendado (seguro com Streamlit)."""
+    st.session_state["tmax"] = float(tmax_rec)
+    st.session_state["tmax_slider"] = float(tmax_rec)
+    st.session_state["tmax_num"] = float(tmax_rec)
+
+def on_auto_toggle():
+    """Quando marcar AUTO, volta a seguir o recomendado automaticamente."""
+    if st.session_state["tmax_auto"]:
+        apply_recommended()
+
+def on_slider_change():
+    """Slider -> mestre + number_input"""
+    v = float(st.session_state["tmax_slider"])
+    st.session_state["tmax"] = v
+    st.session_state["tmax_num"] = v
+
+def on_num_change():
+    """Number_input -> mestre + slider"""
+    v = float(st.session_state["tmax_num"])
+    st.session_state["tmax"] = v
+    st.session_state["tmax_slider"] = v
+
+# Se estiver em AUTO, atualiza ANTES de criar widgets
 if st.session_state["tmax_auto"]:
-    st.session_state["tmax_user"] = float(tmax_rec)
+    apply_recommended()
 
-# Limites dinâmicos do slider (para não ficar travado em 600 s)
-# - deixa o slider cobrir até ~20x o recomendado, com um mínimo de 600 s
-# - e um máximo razoável (mas ainda grande)
-slider_max = float(min(1_000_000.0, max(600.0, 20.0 * tmax_rec)))
+# limites dinâmicos do slider
+# garante que o máximo do slider sempre seja >= valor atual e >= recomendado
+slider_max = float(
+    max(
+        600.0,
+        20.0 * float(tmax_rec),
+        1.2 * float(st.session_state["tmax"])
+    )
+)
+slider_max = float(min(slider_max, 1e9))
 
-cT1, cT2, cT3 = st.columns([2.2, 2.2, 1.0], vertical_alignment="center")
+cT1, cT2, cT3 = st.columns([2.0, 2.2, 1.2], vertical_alignment="center")
 
 with cT1:
-    st.checkbox("Usar valor recomendado", key="tmax_auto")
+    st.checkbox("Usar valor recomendado", key="tmax_auto", on_change=on_auto_toggle)
     st.caption(f"Recomendado agora: **{tmax_rec:.3g} s**")
 
 with cT2:
-    # slider (bom para ajuste rápido)
-    tmax_slider = st.slider(
+    st.slider(
         "Tempo máximo (slider)",
         min_value=0.5,
         max_value=slider_max,
-        value=float(st.session_state["tmax_user"]),
+        value=float(st.session_state["tmax_slider"]),
         step=0.5,
-        key="tmax_user",
+        key="tmax_slider",
+        on_change=on_slider_change,
         disabled=st.session_state["tmax_auto"],
     )
 
 with cT3:
-    # number_input (bom para valores MUITO grandes)
-    tmax_num = st.number_input(
+    st.number_input(
         "Tempo máximo (digite)",
         min_value=0.5,
-        max_value=1_000_000.0,
-        value=float(st.session_state["tmax_user"]),
+        max_value=1e9,
+        value=float(st.session_state["tmax_num"]),
         step=10.0,
         format="%.3g",
-        key="tmax_user_num",
+        key="tmax_num",
+        on_change=on_num_change,
         disabled=st.session_state["tmax_auto"],
     )
-    st.button("Voltar ao recomendado", on_click=reset_tmax, disabled=st.session_state["tmax_auto"])
+    st.button(
+        "Voltar ao recomendado",
+        on_click=apply_recommended,
+        disabled=st.session_state["tmax_auto"],
+    )
 
-# Sincroniza: se manual, number_input domina quando alterado (Streamlit rerun)
-if not st.session_state["tmax_auto"]:
-    # mantém coerência: se o usuário digitou diferente do slider, prioriza o digitado
-    # (como ambos rerunam, basta pegar o maior "fresco" possível)
-    # Aqui, adotamos: se number_input != session_state["tmax_user"], atualiza
-    if "tmax_user_num" in st.session_state:
-        st.session_state["tmax_user"] = float(st.session_state["tmax_user_num"])
-
-tmax = float(st.session_state["tmax_user"])
+tmax = float(st.session_state["tmax"])
 
 # --- Amostragem ---
 # Obs.: para tempos enormes, N fixo pode "esconder" transitórios muito rápidos no começo.
