@@ -167,6 +167,7 @@ gamma_exact = b / (2.0 * m)          # s^-1 (rad/s por convenção aqui)
 omega0_exact = np.sqrt(k / m)        # rad/s
 
 # valores arredondados (3 AS) usados para classificação e apresentação
+# (mantido por você para facilitar atingir o crítico)
 gamma = round_sig(gamma_exact, 3)
 omega0 = round_sig(omega0_exact, 3)
 
@@ -360,15 +361,14 @@ def build_functions():
         return x, v, a, eq_letters, eq_numbers
 
     else:  # movimento superamortecido
-        # s = sqrt(gamma^2 - omega0^2) (não apresentado como "novo parâmetro", só aparece como raiz nas equações)
+        # s = sqrt(gamma^2 - omega0^2)
         rad = gamma**2 - omega0**2
         s = np.sqrt(rad) if rad > 0 else 0.0
 
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m")
 
-        # Forma desenvolvida (sem introduzir alfa):
-        # x = a e^{(s-γ)t} + B e^{-(s+γ)t}
+        # Forma desenvolvida:
         lam1 = (s - gamma)
         lam2 = -(s + gamma)
 
@@ -387,8 +387,6 @@ def build_functions():
             "v": r"v(t)= a\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}-B\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
             "a": r"a(t)= a\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)^2e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}+B\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)^2e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
         }
-
-        # Numéricas bem desenvolvidas (coeficientes e expoentes combinados)
         eq_numbers = {
             "x": rf"x(t)= {fmt3(a0)}\,e^{{({fmt3(lam1)})t}} + {fmt3(B)}\,e^{{({fmt3(lam2)})t}}",
             "v": rf"v(t)= {fmt3(c1)}\,e^{{({fmt3(lam1)})t}} + {fmt3(c2)}\,e^{{({fmt3(lam2)})t}}",
@@ -415,7 +413,7 @@ st.divider()
 # -----------------------------
 st.header("Gráficos")
 
-
+# --- Tempo recomendado (melhor para superamortecido) ---
 def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     # Se existe período utilizável, ~5 ciclos
     if T is not None and np.isfinite(T) and T > 0:
@@ -427,26 +425,51 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
         return 10.0
 
-    # Caso sem amortecimento (ou quase): usa escala ~ alguns períodos naturais
+    # Caso praticamente sem amortecimento
     if g < 1e-12 and w0 > 0:
-        return float(min(50.0, max(2.0, 10.0*(2*np.pi/w0))))
+        T0 = 2*np.pi/w0
+        return float(min(50.0, max(2.0, 10.0*T0)))
 
-    # Subamortecido / crítico: escala ~ decaimento e^{-γt}
+    # Subamortecido / crítico: escala ~ e^{-γt}
     if g <= w0 + 1e-12:
         return float(min(50.0, max(2.0, 10.0/g))) if g > 0 else 10.0
 
-    # Superamortecido: escala é governada pelo modo MAIS LENTO
-    # λ_slow = γ - sqrt(γ^2 - ω0^2)  (pode ser muito pequeno)
+    # Superamortecido: modo MAIS LENTO domina
+    # λ_slow = γ - sqrt(γ^2 - ω0^2)
     s = np.sqrt(g*g - w0*w0)
-    lam_slow = g - s  # > 0
+    lam_slow = g - s  # positivo e pode ser muito pequeno
 
     if lam_slow < 1e-12:
         return 200.0  # fallback seguro
 
-    return float(min(500.0, max(2.0, 10.0/lam_slow)))
+    return float(min(600.0, max(2.0, 10.0/lam_slow)))
 
+st.subheader("Escala de tempo")
 
-tmax = choose_tmax()
+tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
+st.session_state["tmax_rec"] = tmax_rec
+
+if "tmax_user" not in st.session_state:
+    st.session_state["tmax_user"] = float(tmax_rec)
+
+def reset_tmax():
+    st.session_state["tmax_user"] = float(st.session_state.get("tmax_rec", 10.0))
+
+cT1, cT2 = st.columns([3, 1], vertical_alignment="center")
+with cT1:
+    tmax = st.slider(
+        "Tempo máximo do gráfico (s)",
+        min_value=0.5,
+        max_value=600.0,
+        value=float(st.session_state["tmax_user"]),
+        step=0.5,
+        key="tmax_user",
+    )
+    st.caption(f"Recomendado agora: **{tmax_rec:.3g} s**")
+with cT2:
+    st.button("Voltar ao recomendado", on_click=reset_tmax)
+
+# Amostragem
 N = 1400
 t = np.linspace(0.0, tmax, N)
 
