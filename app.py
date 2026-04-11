@@ -5,12 +5,22 @@ import matplotlib.pyplot as plt
 # --------------------------------------------------
 # Configurações iniciais
 # --------------------------------------------------
-st.set_page_config(page_title="Oscilador Mecânico – Física II", layout="wide")
+st.set_page_config(
+    page_title="Oscilador Mecânico – Física II",
+    layout="wide"
+)
 
+# -----------------------------------------
+# Funções auxiliares de formatação numérica
+# -----------------------------------------
 def sig(x):
     if x == 0:
         return 0.0
     return float(f"{x:.3g}")
+
+def fs(x):
+    return f"{sig(x)}"
+``
 
 # --------------------------------------------------
 # Cabeçalho
@@ -152,17 +162,34 @@ if movimento == "Movimento harmônico simples":
 elif movimento == "Movimento harmônico subamortecido":
     C = st.slider("Constante C (m)", 0.01, 10.0, 1.0)
     phi = st.slider("Constante de fase φ (rad)", 0.0, 2*np.pi, 0.0)
+
     omega = sig(np.sqrt(omega0**2 - gamma**2))
 
     x = C * np.exp(-gamma*t) * np.sin(omega*t + phi)
-    v = np.gradient(x, t)
-    a = np.gradient(v, t)
+    v = C * np.exp(-gamma*t) * (
+        omega*np.cos(omega*t+phi) - gamma*np.sin(omega*t+phi)
+    )
+    a = C * np.exp(-gamma*t) * (
+        -(omega**2+gamma**2)*np.sin(omega*t+phi)
+        -2*gamma*omega*np.cos(omega*t+phi)
+    )
 
     st.latex(r"x(t)=Ce^{-\gamma t}\sin(\omega t+\phi)")
-    st.latex(fr"x(t)={sig(C)}e^{{-{gamma}t}}\sin({omega}t+{sig(phi)})")
+    st.latex(fr"x(t)={fs(C)}e^{{-{fs(gamma)}t}}\sin({fs(omega)}t+{fs(phi)})")
 
-    st.latex(r"v(t)=\frac{dx}{dt}")
-    st.latex(r"a(t)=\frac{d^2x}{dt^2}")
+    st.latex(
+        r"v(t)=Ce^{-\gamma t}[\omega\cos(\omega t+\phi)-\gamma\sin(\omega t+\phi)]"
+    )
+    st.latex(
+        fr"v(t)={fs(C)}e^{{-{fs(gamma)}t}}"
+        fr"[{fs(omega)}\cos({fs(omega)}t+{fs(phi)})"
+        fr"-{fs(gamma)}\sin({fs(omega)}t+{fs(phi)})]"
+    )
+
+    st.latex(
+        r"a(t)=Ce^{-\gamma t}[-(\omega^2+\gamma^2)\sin(\omega t+\phi)"
+        r"-2\gamma\omega\cos(\omega t+\phi)]"
+    )
 
 # ----------- Criticamente amortecido -----------
 elif movimento == "Movimento criticamente amortecido":
@@ -170,35 +197,66 @@ elif movimento == "Movimento criticamente amortecido":
     B = st.slider("Constante B (m/s)", -10.0, 10.0, 0.0)
 
     x = (a0 + B*t) * np.exp(-gamma*t)
-    v = np.gradient(x, t)
-    a = np.gradient(v, t)
+    v = np.exp(-gamma*t) * (B - gamma*(a0 + B*t))
+    a = np.exp(-gamma*t) * (gamma**2*(a0 + B*t) - 2*gamma*B)
 
     st.latex(r"x(t)=(a+Bt)e^{-\gamma t}")
-    st.latex(fr"x(t)=({sig(a0)}+{sig(B)}t)e^{{-{gamma}t}}")
+    st.latex(fr"x(t)=({fs(a0)}+{fs(B)}t)e^{{-{fs(gamma)}t}}")
 
-    st.latex(r"v(t)=\frac{dx}{dt}")
-    st.latex(r"a(t)=\frac{d^2x}{dt^2}")
+    st.latex(r"v(t)=e^{-\gamma t}[B-\gamma(a+Bt)]")
+    st.latex(
+        fr"v(t)=e^{{-{fs(gamma)}t}}"
+        fr"[{fs(B)}-{fs(gamma)}({fs(a0)}+{fs(B)}t)]"
+    )
+
+    st.latex(r"a(t)=e^{-\gamma t}[\gamma^2(a+Bt)-2\gamma B]")
 
 # ----------- Superamortecido -----------
 else:
     a0 = st.slider("Constante a (m)", 0.01, 10.0, 1.0)
     B = st.slider("Constante B (m)", 0.01, 10.0, 1.0)
-    alpha = sig(np.sqrt(gamma**2 - omega0**2))
 
-    x = np.exp(-gamma*t)*(a0*np.exp(alpha*t)+B*np.exp(-alpha*t))
-    v = np.gradient(x, t)
-    a = np.gradient(v, t)
+    # variável auxiliar interna (NÃO exibida)
+    alpha = np.sqrt(gamma**2 - omega0**2)
 
-    st.latex(
-        r"x(t)=e^{-\gamma t}[ae^{\sqrt{\gamma^2-\omega_0^2}t}"
-        r"+be^{-\sqrt{\gamma^2-\omega_0^2}t}]"
-    )
-    st.latex(
-        fr"x(t)=e^{{-{gamma}t}}[{sig(a0)}e^{{{alpha}t}}+{sig(B)}e^{{-{alpha}t}}]"
+    x = np.exp(-gamma*t) * (
+        a0*np.exp(alpha*t) + B*np.exp(-alpha*t)
     )
 
-    st.latex(r"v(t)=\frac{dx}{dt}")
-    st.latex(r"a(t)=\frac{d^2x}{dt^2}")
+    v = np.exp(-gamma*t) * (
+        (alpha - gamma)*a0*np.exp(alpha*t)
+        - (alpha + gamma)*B*np.exp(-alpha*t)
+    )
+
+    a = np.exp(-gamma*t) * (
+        (alpha - gamma)**2 * a0*np.exp(alpha*t)
+        + (alpha + gamma)**2 * B*np.exp(-alpha*t)
+    )
+
+    # --- Equações exibidas ---
+    st.latex(
+        r"x(t)=e^{-\gamma t}"
+        r"\left[a\,e^{\sqrt{\gamma^2-\omega_0^2}\,t}"
+        r"+B\,e^{-\sqrt{\gamma^2-\omega_0^2}\,t}\right]"
+    )
+
+    st.latex(
+        fr"x(t)=e^{{-{sig(gamma)}t}}"
+        fr"\left[{sig(a0)}e^{{\sqrt{{{sig(gamma)}^2-{sig(omega0)}^2}}\,t}}"
+        fr"+{sig(B)}e^{{-\sqrt{{{sig(gamma)}^2-{sig(omega0)}^2}}\,t}}\right]"
+    )
+
+    st.latex(
+        r"v(t)=e^{-\gamma t}"
+        r"\left[(\sqrt{\gamma^2-\omega_0^2}-\gamma)a\,e^{\sqrt{\gamma^2-\omega_0^2}t}"
+        r"-(\sqrt{\gamma^2-\omega_0^2}+\gamma)B\,e^{-\sqrt{\gamma^2-\omega_0^2}t}\right]"
+    )
+
+    st.latex(
+        r"a(t)=e^{-\gamma t}"
+        r"\left[(\sqrt{\gamma^2-\omega_0^2}-\gamma)^2 a\,e^{\sqrt{\gamma^2-\omega_0^2}t}"
+        r"+(\sqrt{\gamma^2-\omega_0^2}+\gamma)^2 B\,e^{-\sqrt{\gamma^2-\omega_0^2}t}\right]"
+    )
 
 # --------------------------------------------------
 # Gráficos
