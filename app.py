@@ -11,44 +11,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# -----------------------------
-# Formatações
-# -----------------------------
 def round_sig(x, sig=3):
-    """Arredonda para 'sig' algarismos significativos (numérico)."""
+    """Arredonda para 'sig' algarismos significativos."""
     x = float(x)
     if x == 0.0:
         return 0.0
     return round(x, sig - int(np.floor(np.log10(abs(x)))) - 1)
 
 def fmt3(x):
-    """Formata com 3 algarismos significativos (texto normal, fora do LaTeX)."""
+    """Formata com 3 algarismos significativos (texto)."""
     try:
         if x is None or (isinstance(x, float) and (np.isnan(x) or np.isinf(x))):
             return "—"
         return f"{float(x):.3g}"
     except Exception:
         return str(x)
-
-def fmt3L(x):
-    """
-    3 AS para LaTeX, mas SEM 'e+04' (notação científica do Python).
-    Converte '7.51e+04' -> '7.51\\ast 10^{4}' para ficar parecido com '*10^4' em aula.
-    """
-    try:
-        if x is None or (isinstance(x, float) and (np.isnan(x) or np.isinf(x))):
-            return r"\text{—}"
-        x = float(x)
-        if x == 0.0:
-            return "0"
-        s = f"{x:.3g}".replace("E", "e")
-        if "e" in s:
-            mant, exp = s.split("e")
-            exp = int(exp)
-            return rf"{mant}\ast 10^{{{exp}}}"
-        return s
-    except Exception:
-        return r"\text{err}"
 
 def sgn_comp(a, b, tol=None):
     """Retorna '<', '>' ou '=' com tolerância numérica."""
@@ -126,7 +103,7 @@ def synced_slider_number(label, key, min_value, max_value, value, step, unit="",
     return float(st.session_state[key])
 
 # -----------------------------
-# Cabeçalho
+# Cabeçalho: logo + título + descrição
 # -----------------------------
 col_logo, col_title = st.columns([1, 5], vertical_alignment="center")
 with col_logo:
@@ -146,7 +123,7 @@ with col_title:
 st.divider()
 
 # -----------------------------
-# Parâmetros iniciais
+# Seção: Parâmetros iniciais do sistema
 # -----------------------------
 st.header("Parâmetros iniciais do sistema")
 
@@ -177,7 +154,7 @@ k = synced_slider_number(
 st.divider()
 
 # -----------------------------
-# Classificação do movimento (3 AS)
+# Seção: Classificação do movimento
 # -----------------------------
 st.header("Classificação do movimento")
 
@@ -189,7 +166,8 @@ if m <= 0 or k < 0:
 gamma_exact = b / (2.0 * m)          # s^-1
 omega0_exact = np.sqrt(k / m)        # rad/s
 
-# valores arredondados (3 AS) usados para classificação e apresentação (sua ideia didática)
+# valores arredondados (3 AS) usados para classificação e apresentação
+# (mantido por você para facilitar atingir o crítico)
 gamma = round_sig(gamma_exact, 3)
 omega0 = round_sig(omega0_exact, 3)
 
@@ -225,7 +203,7 @@ with c3:
 st.divider()
 
 # -----------------------------
-# Cálculos (3 AS)
+# Seção: Cálculos (somente quando aplicável)
 # -----------------------------
 omega = None
 T = None
@@ -264,7 +242,7 @@ elif classificacao == "movimento harmônico subamortecido":
 st.divider()
 
 # -----------------------------
-# Equações do movimento (numéricas com 3 AS e sem 'e+04')
+# Seção: Equações do movimento
 # -----------------------------
 st.header("Equações do movimento")
 
@@ -293,7 +271,7 @@ def build_functions():
     """
     Retorna x(t), v(t), a(t), e strings latex:
     - eq_letters: simbólicas
-    - eq_numbers: numéricas (3 AS + sem notação 'e+04' do Python)
+    - eq_numbers: numéricas (bem desenvolvidas)
     """
     if classificacao == "movimento harmônico simples":
         A = slider_param("Amplitude A", "A", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
@@ -312,9 +290,9 @@ def build_functions():
             "a": r"a(t) = -A\omega_0^2\sin(\omega_0 t + \varphi)",
         }
         eq_numbers = {
-            "x": rf"x(t) = {fmt3L(A)}\,\sin\!\left({fmt3L(omega0)}\,t + {fmt3L(phi)}\right)",
-            "v": rf"v(t) = {fmt3L(Aom)}\,\cos\!\left({fmt3L(omega0)}\,t + {fmt3L(phi)}\right)",
-            "a": rf"a(t) = -{fmt3L(Aom2)}\,\sin\!\left({fmt3L(omega0)}\,t + {fmt3L(phi)}\right)",
+            "x": rf"x(t) = {fmt3(A)}\,\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
+            "v": rf"v(t) = {fmt3(Aom)}\,\cos\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
+            "a": rf"a(t) = -{fmt3(Aom2)}\,\sin\!\left({fmt3(omega0)}\,t + {fmt3(phi)}\right)",
         }
         return x, v, a, eq_letters, eq_numbers
 
@@ -334,14 +312,14 @@ def build_functions():
             return C*np.exp(-gamma*t)*np.sin(omega_loc*t + phi)
 
         def v(t):
-            s_ = np.sin(omega_loc*t + phi)
-            c_ = np.cos(omega_loc*t + phi)
-            return np.exp(-gamma*t)*(C*omega_loc*c_ - C*gamma*s_)
+            s = np.sin(omega_loc*t + phi)
+            c = np.cos(omega_loc*t + phi)
+            return np.exp(-gamma*t)*(C*omega_loc*c - C*gamma*s)
 
         def a(t):
-            s_ = np.sin(omega_loc*t + phi)
-            c_ = np.cos(omega_loc*t + phi)
-            return np.exp(-gamma*t)*(C*(gamma**2 - omega_loc**2)*s_ - 2*C*gamma*omega_loc*c_)
+            s = np.sin(omega_loc*t + phi)
+            c = np.cos(omega_loc*t + phi)
+            return np.exp(-gamma*t)*(C*(gamma**2 - omega_loc**2)*s - 2*C*gamma*omega_loc*c)
 
         eq_letters = {
             "x": r"x(t) = C\,e^{-\gamma t}\,\sin(\omega t+\varphi)",
@@ -349,9 +327,9 @@ def build_functions():
             "a": r"a(t) = e^{-\gamma t}\left(C(\gamma^2-\omega^2)\sin(\omega t+\varphi)-2C\gamma\omega\cos(\omega t+\varphi)\right)",
         }
         eq_numbers = {
-            "x": rf"x(t) = {fmt3L(C)}\,e^{{-{fmt3L(gamma)}\,t}}\,\sin\!\left({fmt3L(omega_loc)}\,t + {fmt3L(phi)}\right)",
-            "v": rf"v(t) = e^{{-{fmt3L(gamma)}\,t}}\left({fmt3L(Cw)}\cos\!\left({fmt3L(omega_loc)}t+{fmt3L(phi)}\right) - {fmt3L(Cg)}\sin\!\left({fmt3L(omega_loc)}t+{fmt3L(phi)}\right)\right)",
-            "a": rf"a(t) = e^{{-{fmt3L(gamma)}\,t}}\left({fmt3L(Cg2_m_Cw2)}\sin\!\left({fmt3L(omega_loc)}t+{fmt3L(phi)}\right) - {fmt3L(twoCgw)}\cos\!\left({fmt3L(omega_loc)}t+{fmt3L(phi)}\right)\right)",
+            "x": rf"x(t) = {fmt3(C)}\,e^{{-{fmt3(gamma)}t}}\,\sin\!\left({fmt3(omega_loc)}\,t + {fmt3(phi)}\right)",
+            "v": rf"v(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(Cw)}\cos({fmt3(omega_loc)}t+{fmt3(phi)}) - {fmt3(Cg)}\sin({fmt3(omega_loc)}t+{fmt3(phi)})\right)",
+            "a": rf"a(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(Cg2_m_Cw2)}\sin({fmt3(omega_loc)}t+{fmt3(phi)}) - {fmt3(twoCgw)}\cos({fmt3(omega_loc)}t+{fmt3(phi)})\right)",
         }
         return x, v, a, eq_letters, eq_numbers
 
@@ -374,9 +352,9 @@ def build_functions():
             "a": r"a(t) = e^{-\gamma t}\left((\gamma^2 a-2\gamma B)+(\gamma^2 B)t\right)",
         }
         eq_numbers = {
-            "x": rf"x(t) = \left({fmt3L(a0)} + {fmt3L(B)}\,t\right)e^{{-{fmt3L(gamma)}\,t}}",
-            "v": rf"v(t) = e^{{-{fmt3L(gamma)}\,t}}\left({fmt3L(B_minus_ga)} - {fmt3L(gB)}\,t\right)",
-            "a": rf"a(t) = e^{{-{fmt3L(gamma)}\,t}}\left({fmt3L(g2a_minus_2gB)} + {fmt3L(g2B)}\,t\right)",
+            "x": rf"x(t) = \left({fmt3(a0)} + {fmt3(B)}t\right)e^{{-{fmt3(gamma)}t}}",
+            "v": rf"v(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(B_minus_ga)} - {fmt3(gB)}t\right)",
+            "a": rf"a(t) = e^{{-{fmt3(gamma)}t}}\left({fmt3(g2a_minus_2gB)} + {fmt3(g2B)}t\right)",
         }
         return x, v, a, eq_letters, eq_numbers
 
@@ -405,9 +383,9 @@ def build_functions():
             "a": r"a(t)= a\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)^2e^{\left(\sqrt{\gamma^2-\omega_0^2}-\gamma\right)t}+B\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)^2e^{-\left(\sqrt{\gamma^2-\omega_0^2}+\gamma\right)t}",
         }
         eq_numbers = {
-            "x": rf"x(t)= {fmt3L(a0)}\,e^{{\left({fmt3L(lam1)}\right)t}} + {fmt3L(B)}\,e^{{\left({fmt3L(lam2)}\right)t}}",
-            "v": rf"v(t)= {fmt3L(c1)}\,e^{{\left({fmt3L(lam1)}\right)t}} + {fmt3L(c2)}\,e^{{\left({fmt3L(lam2)}\right)t}}",
-            "a": rf"a(t)= {fmt3L(d1)}\,e^{{\left({fmt3L(lam1)}\right)t}} + {fmt3L(d2)}\,e^{{\left({fmt3L(lam2)}\right)t}}",
+            "x": rf"x(t)= {fmt3(a0)}\,e^{{({fmt3(lam1)})t}} + {fmt3(B)}\,e^{{({fmt3(lam2)})t}}",
+            "v": rf"v(t)= {fmt3(c1)}\,e^{{({fmt3(lam1)})t}} + {fmt3(c2)}\,e^{{({fmt3(lam2)})t}}",
+            "a": rf"a(t)= {fmt3(d1)}\,e^{{({fmt3(lam1)})t}} + {fmt3(d2)}\,e^{{({fmt3(lam2)})t}}",
         }
         return x, v, a, eq_letters, eq_numbers
 
@@ -426,16 +404,64 @@ st.latex(eqN["a"])
 st.divider()
 
 # -----------------------------
-# Gráficos + escala de tempo (AUTO/MANUAL sem erro)
+# Seção: Gráficos + escala de tempo (AUTO/MANUAL)
 # -----------------------------
 st.header("Gráficos")
 
 def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     """
     Recomenda tmax baseado na escala física dominante.
+
+    - harmônico/subamortecido: usa período (~5 ciclos) quando existe
+    - amortecido: usa escala ~ 10/gamma
+    - superamortecido: usa o modo lento: lam_slow = gamma - sqrt(gamma^2 - omega0^2)
+    """
+    # teto sanitário para evitar números absurdos em UI
+    HARD_CAP = 1_000_000.0  # 1e6 s (~11,6 dias)
+    HARD_FLOOR = 2.0
+
+    if T is not None and np.isfinite(T) and T > 0:
+        return float(min(HARD_CAP, max(HARD_FLOOR, 5.0 * T)))
+
+    g = float(gamma_exact)
+    w0 = float(omega0_exact)
+
+    if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
+        return 10.0
+
+    # praticamente sem amortecimento: usa alguns períodos naturais
+    if g < 1e-12 and w0 > 0:
+        T0 = 2 * np.pi / w0
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 * T0)))
+
+    # subamortecido / crítico: escala típica de envelope
+    if g <= w0 + 1e-12:
+        if g <= 0:
+            return 10.0
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / g)))
+
+    # superamortecido: modo lento domina
+    s = np.sqrt(max(0.0, g*g - w0*w0))
+    lam_slow = g - s  # pode ser MUITO pequeno
+
+    if lam_slow < 1e-15:
+        # extremamente lento: retorna um valor grande, mas limitado pelo HARD_CAP
+        return float(min(HARD_CAP, 100_000.0))
+
+    return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / lam_slow)))
+
+# --- Escala de tempo (AUTO / MANUAL) ---
+# -----------------------------
+# Escala de tempo (AUTO / MANUAL) - versão sem StreamlitAPIException
+# -----------------------------
+st.subheader("Escala de tempo")
+
+def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
+    """
+    Recomenda tmax baseado na escala física dominante.
     Superamortecido: usa o modo lento lam_slow = gamma - sqrt(gamma^2 - omega0^2).
     """
-    HARD_CAP = 1e9   # permite tempos muito grandes (≈ 31 anos) para casos extremos
+    HARD_CAP = 1e9          # permite tempos MUITO grandes (≈ 31 anos)
     HARD_FLOOR = 2.0
 
     # Se existe período utilizável, ~5 ciclos
@@ -453,7 +479,7 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
         T0 = 2 * np.pi / w0
         return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 * T0)))
 
-    # subamortecido / crítico: envelope e^{-γt}
+    # subamortecido / crítico: escala ~ envelope e^{-γt}
     if g <= w0 + 1e-12:
         return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / g))) if g > 0 else 10.0
 
@@ -462,59 +488,71 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     lam_slow = g - s  # pode ser MUITO pequeno
 
     if lam_slow < 1e-18:
+        # extremamente lento (quase crítico com arredondamentos ou ω0<<γ)
         return 1e6
 
     return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / lam_slow)))
 
-st.subheader("Escala de tempo")
-
+# recomendado recalculado a cada rerun
 tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
 
 # estados
 if "tmax_auto" not in st.session_state:
     st.session_state["tmax_auto"] = True  # vem marcado
 
+# valor mestre
 if "tmax" not in st.session_state:
     st.session_state["tmax"] = float(tmax_rec)
 
-# chaves separadas para widgets (evita StreamlitAPIException)
+# widgets (chaves separadas)
 if "tmax_slider" not in st.session_state:
     st.session_state["tmax_slider"] = float(st.session_state["tmax"])
 if "tmax_num" not in st.session_state:
     st.session_state["tmax_num"] = float(st.session_state["tmax"])
 
 def apply_recommended():
+    """Seta tudo para o recomendado (seguro com Streamlit)."""
     st.session_state["tmax"] = float(tmax_rec)
     st.session_state["tmax_slider"] = float(tmax_rec)
     st.session_state["tmax_num"] = float(tmax_rec)
 
 def on_auto_toggle():
+    """Quando marcar AUTO, volta a seguir o recomendado automaticamente."""
     if st.session_state["tmax_auto"]:
         apply_recommended()
 
 def on_slider_change():
-    v_ = float(st.session_state["tmax_slider"])
-    st.session_state["tmax"] = v_
-    st.session_state["tmax_num"] = v_
+    """Slider -> mestre + number_input"""
+    v = float(st.session_state["tmax_slider"])
+    st.session_state["tmax"] = v
+    st.session_state["tmax_num"] = v
 
 def on_num_change():
-    v_ = float(st.session_state["tmax_num"])
-    st.session_state["tmax"] = v_
-    st.session_state["tmax_slider"] = v_
+    """Number_input -> mestre + slider"""
+    v = float(st.session_state["tmax_num"])
+    st.session_state["tmax"] = v
+    st.session_state["tmax_slider"] = v
 
-# AUTO: segue o recomendado automaticamente
+# Se estiver em AUTO, atualiza ANTES de criar widgets
 if st.session_state["tmax_auto"]:
     apply_recommended()
 
-# slider com máximo dinâmico (cobre bem tempos grandes)
-slider_max = float(max(600.0, 20.0 * tmax_rec, 1.2 * float(st.session_state["tmax"])))
+# limites dinâmicos do slider
+# garante que o máximo do slider sempre seja >= valor atual e >= recomendado
+slider_max = float(
+    max(
+        600.0,
+        20.0 * float(tmax_rec),
+        1.2 * float(st.session_state["tmax"])
+    )
+)
 slider_max = float(min(slider_max, 1e9))
 
 cT1, cT2, cT3 = st.columns([2.0, 2.2, 1.2], vertical_alignment="center")
 
 with cT1:
     st.checkbox("Usar valor recomendado", key="tmax_auto", on_change=on_auto_toggle)
-    st.caption(f"Recomendado agora: **{fmt3(tmax_rec)} s**")
+    st.caption(f"Recomendado agora: **{tmax_rec:.3g} s**")
 
 with cT2:
     st.slider(
@@ -523,7 +561,6 @@ with cT2:
         max_value=slider_max,
         value=float(st.session_state["tmax_slider"]),
         step=0.5,
-        format="%.3g",              # ✅ 3 AS
         key="tmax_slider",
         on_change=on_slider_change,
         disabled=st.session_state["tmax_auto"],
@@ -549,12 +586,13 @@ with cT3:
 
 tmax = float(st.session_state["tmax"])
 
-# -----------------------------
-# Amostragem e sinais
-# -----------------------------
+# --- Amostragem ---
+# Obs.: para tempos enormes, N fixo pode "esconder" transitórios muito rápidos no começo.
+# Para didática, mantemos simples.
 N = 1400
 t = np.linspace(0.0, tmax, N)
 
+# Sinais
 x = x_fun(t)
 v = v_fun(t)
 acc = a_fun(t)
