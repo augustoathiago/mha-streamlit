@@ -523,6 +523,7 @@ with cT2:
         max_value=slider_max,
         value=float(st.session_state["tmax_slider"]),
         step=0.5,
+        format="%.3g",              # ✅ 3 AS
         key="tmax_slider",
         on_change=on_slider_change,
         disabled=st.session_state["tmax_auto"],
