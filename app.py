@@ -418,7 +418,7 @@ st.latex(eqL["x"])
 st.latex(eqL["v"])
 st.latex(eqL["a"])
 
-st.markdown("### Equações (com valores numéricos) — 3 AS e notação '*10^n'")
+st.markdown("### Equações (com valores numéricos)")
 st.latex(eqN["x"])
 st.latex(eqN["v"])
 st.latex(eqN["a"])
