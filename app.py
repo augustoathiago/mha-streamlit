@@ -33,7 +33,7 @@ def fmt3(x):
 def fmt3L(x):
     """
     3 AS para LaTeX, mas SEM 'e+04' (notação científica do Python).
-    Converte '7.51e+04' -> '7.51\\ast 10^{4}' para ficar parecido com '*10^4' em aula.
+    Converte '7.51e+04' -> '7.51\\ast 10^{4}'.
     """
     try:
         if x is None or (isinstance(x, float) and (np.isnan(x) or np.isinf(x))):
@@ -72,30 +72,40 @@ def style_axes(ax):
     ax.axhline(0, color="black", linewidth=3.0)
     ax.axvline(0, color="black", linewidth=3.0)
 
+def clamp(v, vmin, vmax):
+    return min(max(v, vmin), vmax)
+
+def to3as(v, vmin=None, vmax=None):
+    """Clampa (opcional) e força 3 AS no valor interno."""
+    v = float(v)
+    if vmin is not None and vmax is not None:
+        v = clamp(v, vmin, vmax)
+    return float(round_sig(v, 3))
+
 def synced_slider_number(label, key, min_value, max_value, value, step, unit="", help_text=None):
     """
     Cria slider + number_input sincronizados via session_state.
-    Retorna o valor atual (float).
+    Retorna o valor atual (float), FORÇADO em 3 AS internamente.
     """
     slider_key = f"{key}_slider"
     number_key = f"{key}_number"
 
     if key not in st.session_state:
-        st.session_state[key] = float(value)
+        st.session_state[key] = to3as(value, min_value, max_value)
     if slider_key not in st.session_state:
-        st.session_state[slider_key] = float(value)
+        st.session_state[slider_key] = float(st.session_state[key])
     if number_key not in st.session_state:
-        st.session_state[number_key] = float(value)
-
-    def from_slider():
-        st.session_state[key] = float(st.session_state[slider_key])
         st.session_state[number_key] = float(st.session_state[key])
 
-    def from_number():
-        v = float(st.session_state[number_key])
-        v = min(max(v, min_value), max_value)
-        st.session_state[key] = v
+    def from_slider():
+        st.session_state[key] = to3as(st.session_state[slider_key], min_value, max_value)
+        st.session_state[number_key] = float(st.session_state[key])
         st.session_state[slider_key] = float(st.session_state[key])
+
+    def from_number():
+        st.session_state[key] = to3as(st.session_state[number_key], min_value, max_value)
+        st.session_state[slider_key] = float(st.session_state[key])
+        st.session_state[number_key] = float(st.session_state[key])
 
     c1, c2 = st.columns([3, 1], vertical_alignment="center")
     with c1:
@@ -146,7 +156,7 @@ with col_title:
 st.divider()
 
 # -----------------------------
-# Parâmetros iniciais
+# Parâmetros iniciais (3 AS internos)
 # -----------------------------
 st.header("Parâmetros iniciais do sistema")
 
@@ -189,9 +199,9 @@ if m <= 0 or k < 0:
 gamma_exact = b / (2.0 * m)          # s^-1
 omega0_exact = np.sqrt(k / m)        # rad/s
 
-# valores arredondados (3 AS) usados para classificação e apresentação (sua ideia didática)
-gamma = round_sig(gamma_exact, 3)
-omega0 = round_sig(omega0_exact, 3)
+# valores arredondados (3 AS) usados para classificação e apresentação
+gamma = to3as(gamma_exact)
+omega0 = to3as(omega0_exact)
 
 comp = sgn_comp(gamma, omega0)
 
@@ -209,7 +219,7 @@ c1, c2, c3 = st.columns([1.4, 1.4, 2.2])
 with c1:
     st.subheader("Fator de amortecimento")
     st.latex(r"\gamma = \frac{b}{2m}")
-    st.write(f"**γ = {fmt3(gamma)} rad/s**")
+    st.write(f"**γ = {fmt3(gamma)} s⁻¹**")
 with c2:
     st.subheader("Frequência angular natural")
     st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
@@ -235,10 +245,12 @@ if classificacao == "movimento harmônico simples":
     st.header("Cálculos")
     st.latex(r"T = \frac{2\pi}{\omega_0}")
     T = 2 * np.pi / omega0 if omega0 > 0 else np.nan
+    T = to3as(T) if np.isfinite(T) else np.nan
     st.write(f"**Período:** T = **{fmt3(T)} s**")
 
     st.latex(r"f = \frac{1}{T}")
     f = 1.0 / T if np.isfinite(T) and T > 0 else np.nan
+    f = to3as(f) if np.isfinite(f) else np.nan
     st.write(f"**Frequência:** f = **{fmt3(f)} Hz**")
 
 elif classificacao == "movimento harmônico subamortecido":
@@ -250,15 +262,18 @@ elif classificacao == "movimento harmônico subamortecido":
         omega = np.nan
     else:
         omega = np.sqrt(inside)
+        omega = to3as(omega)
 
     st.write(f"**Frequência angular amortecida:** ω = **{fmt3(omega)} rad/s**")
 
     st.latex(r"T = \frac{2\pi}{\omega}")
     T = 2 * np.pi / omega if np.isfinite(omega) and omega > 0 else np.nan
+    T = to3as(T) if np.isfinite(T) else np.nan
     st.write(f"**Pseudoperíodo:** T = **{fmt3(T)} s**")
 
     st.latex(r"f = \frac{1}{T}")
     f = 1.0 / T if np.isfinite(T) and T > 0 else np.nan
+    f = to3as(f) if np.isfinite(f) else np.nan
     st.write(f"**Frequência:** f = **{fmt3(f)} Hz**")
 
 st.divider()
@@ -275,7 +290,7 @@ PHI_MIN, PHI_MAX = -2*np.pi, 2*np.pi
 # Iniciais persistentes
 for k0, v0 in [("A", 1.0), ("C", 1.0), ("phi", 0.0), ("a_const", 1.0), ("B_const", 0.0)]:
     if k0 not in st.session_state:
-        st.session_state[k0] = v0
+        st.session_state[k0] = to3as(v0)
 
 def slider_param(label, key, minv, maxv, val, step, unit=""):
     v = st.slider(
@@ -287,7 +302,9 @@ def slider_param(label, key, minv, maxv, val, step, unit=""):
         format="%.3g",
         key=key
     )
-    return float(v)
+    v = to3as(v, minv, maxv)
+    st.session_state[key] = v
+    return v
 
 def build_functions():
     """
@@ -299,8 +316,9 @@ def build_functions():
         A = slider_param("Amplitude A", "A", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
         phi = slider_param("Constante de fase φ", "phi", PHI_MIN, PHI_MAX, 0.0, 0.001, "rad")
 
-        Aom = A * omega0
-        Aom2 = A * (omega0**2)
+        # Consistência: usa omega0 (já 3 AS)
+        Aom = to3as(A * omega0)
+        Aom2 = to3as(A * (omega0**2))
 
         def x(t): return A*np.sin(omega0*t + phi)
         def v(t): return A*omega0*np.cos(omega0*t + phi)
@@ -321,14 +339,15 @@ def build_functions():
     elif classificacao == "movimento harmônico subamortecido":
         inside = omega0**2 - gamma**2
         omega_loc = np.sqrt(inside) if inside > 0 else np.nan
+        omega_loc = to3as(omega_loc) if np.isfinite(omega_loc) else np.nan
 
         C = slider_param("Constante C", "C", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
         phi = slider_param("Constante de fase φ", "phi", PHI_MIN, PHI_MAX, 0.0, 0.001, "rad")
 
-        Cw = C * omega_loc if np.isfinite(omega_loc) else np.nan
-        Cg = C * gamma
-        Cg2_m_Cw2 = C * (gamma**2 - omega_loc**2) if np.isfinite(omega_loc) else np.nan
-        twoCgw = 2 * C * gamma * omega_loc if np.isfinite(omega_loc) else np.nan
+        Cw = to3as(C * omega_loc) if np.isfinite(omega_loc) else np.nan
+        Cg = to3as(C * gamma)
+        Cg2_m_Cw2 = to3as(C * (gamma**2 - omega_loc**2)) if np.isfinite(omega_loc) else np.nan
+        twoCgw = to3as(2 * C * gamma * omega_loc) if np.isfinite(omega_loc) else np.nan
 
         def x(t):
             return C*np.exp(-gamma*t)*np.sin(omega_loc*t + phi)
@@ -359,10 +378,10 @@ def build_functions():
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m/s")
 
-        B_minus_ga = B - gamma*a0
-        gB = gamma*B
-        g2a_minus_2gB = (gamma**2)*a0 - 2*gamma*B
-        g2B = (gamma**2)*B
+        B_minus_ga = to3as(B - gamma*a0)
+        gB = to3as(gamma*B)
+        g2a_minus_2gB = to3as((gamma**2)*a0 - 2*gamma*B)
+        g2B = to3as((gamma**2)*B)
 
         def x(t): return (a0 + B*t)*np.exp(-gamma*t)
         def v(t): return np.exp(-gamma*t)*(B - gamma*(a0 + B*t))
@@ -383,17 +402,18 @@ def build_functions():
     else:  # movimento superamortecido
         rad = gamma**2 - omega0**2
         s = np.sqrt(rad) if rad > 0 else 0.0
+        s = to3as(s)
 
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m")
 
-        lam1 = (s - gamma)
-        lam2 = -(s + gamma)
+        lam1 = to3as((s - gamma))
+        lam2 = to3as(-(s + gamma))
 
-        c1 = a0 * lam1
-        c2 = B * lam2
-        d1 = a0 * (lam1**2)
-        d2 = B * (lam2**2)
+        c1 = to3as(a0 * lam1)
+        c2 = to3as(B * lam2)
+        d1 = to3as(a0 * (lam1**2))
+        d2 = to3as(B * (lam2**2))
 
         def x(t): return a0*np.exp(lam1*t) + B*np.exp(lam2*t)
         def v(t): return c1*np.exp(lam1*t) + c2*np.exp(lam2*t)
@@ -435,10 +455,9 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     Recomenda tmax baseado na escala física dominante.
     Superamortecido: usa o modo lento lam_slow = gamma - sqrt(gamma^2 - omega0^2).
     """
-    HARD_CAP = 1e9   # permite tempos muito grandes (≈ 31 anos) para casos extremos
+    HARD_CAP = 1e9
     HARD_FLOOR = 2.0
 
-    # Se existe período utilizável, ~5 ciclos
     if T is not None and np.isfinite(T) and T > 0:
         return float(min(HARD_CAP, max(HARD_FLOOR, 5.0 * T)))
 
@@ -448,18 +467,15 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
         return 10.0
 
-    # praticamente sem amortecimento
     if g < 1e-12 and w0 > 0:
         T0 = 2 * np.pi / w0
         return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 * T0)))
 
-    # subamortecido / crítico: envelope e^{-γt}
     if g <= w0 + 1e-12:
         return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / g))) if g > 0 else 10.0
 
-    # superamortecido: modo lento domina
     s = np.sqrt(max(0.0, g*g - w0*w0))
-    lam_slow = g - s  # pode ser MUITO pequeno
+    lam_slow = g - s
 
     if lam_slow < 1e-18:
         return 1e6
@@ -472,41 +488,41 @@ tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
 
 # estados
 if "tmax_auto" not in st.session_state:
-    st.session_state["tmax_auto"] = True  # vem marcado
+    st.session_state["tmax_auto"] = True
 
 if "tmax" not in st.session_state:
-    st.session_state["tmax"] = float(tmax_rec)
+    st.session_state["tmax"] = to3as(tmax_rec)
 
-# chaves separadas para widgets (evita StreamlitAPIException)
 if "tmax_slider" not in st.session_state:
     st.session_state["tmax_slider"] = float(st.session_state["tmax"])
 if "tmax_num" not in st.session_state:
     st.session_state["tmax_num"] = float(st.session_state["tmax"])
 
 def apply_recommended():
-    st.session_state["tmax"] = float(tmax_rec)
-    st.session_state["tmax_slider"] = float(tmax_rec)
-    st.session_state["tmax_num"] = float(tmax_rec)
+    v = to3as(tmax_rec)
+    st.session_state["tmax"] = v
+    st.session_state["tmax_slider"] = v
+    st.session_state["tmax_num"] = v
 
 def on_auto_toggle():
     if st.session_state["tmax_auto"]:
         apply_recommended()
 
 def on_slider_change():
-    v_ = float(st.session_state["tmax_slider"])
+    v_ = to3as(st.session_state["tmax_slider"], 0.5, 1e9)
     st.session_state["tmax"] = v_
     st.session_state["tmax_num"] = v_
-
-def on_num_change():
-    v_ = float(st.session_state["tmax_num"])
-    st.session_state["tmax"] = v_
     st.session_state["tmax_slider"] = v_
 
-# AUTO: segue o recomendado automaticamente
+def on_num_change():
+    v_ = to3as(st.session_state["tmax_num"], 0.5, 1e9)
+    st.session_state["tmax"] = v_
+    st.session_state["tmax_slider"] = v_
+    st.session_state["tmax_num"] = v_
+
 if st.session_state["tmax_auto"]:
     apply_recommended()
 
-# slider com máximo dinâmico (cobre bem tempos grandes)
 slider_max = float(max(600.0, 20.0 * tmax_rec, 1.2 * float(st.session_state["tmax"])))
 slider_max = float(min(slider_max, 1e9))
 
@@ -523,6 +539,7 @@ with cT2:
         max_value=slider_max,
         value=float(st.session_state["tmax_slider"]),
         step=0.5,
+        format="%.3g",
         key="tmax_slider",
         on_change=on_slider_change,
         disabled=st.session_state["tmax_auto"],
