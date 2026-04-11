@@ -279,7 +279,8 @@ elif classificacao == "movimento harmônico subamortecido":
 st.divider()
 
 # -----------------------------
-# Equações do movimento (numéricas com 3 AS e sem 'e+04')
+# Equações do movimento
+# (numéricas com 3 AS e sem 'e+04')
 # -----------------------------
 st.header("Equações do movimento")
 
@@ -287,24 +288,46 @@ LEN_MIN, LEN_MAX = -10.0, 10.0
 AMP_MIN, AMP_MAX = 0.0, 10.0
 PHI_MIN, PHI_MAX = -2*np.pi, 2*np.pi
 
-# Iniciais persistentes
+# Iniciais persistentes (valores canônicos, não-widget)
 for k0, v0 in [("A", 1.0), ("C", 1.0), ("phi", 0.0), ("a_const", 1.0), ("B_const", 0.0)]:
     if k0 not in st.session_state:
         st.session_state[k0] = to3as(v0)
 
 def slider_param(label, key, minv, maxv, val, step, unit=""):
-    v = st.slider(
+    """
+    Slider com:
+    - widget key separado (key+'_w') para evitar StreamlitAPIException
+    - valor canônico salvo em st.session_state[key] (3 AS)
+    """
+    wkey = f"{key}_w"
+
+    # inicializa valor canônico
+    if key not in st.session_state:
+        st.session_state[key] = to3as(val, minv, maxv)
+
+    # inicializa valor do widget
+    if wkey not in st.session_state:
+        st.session_state[wkey] = float(st.session_state[key])
+
+    def on_change():
+        # callback pode modificar state do widget e do canônico
+        st.session_state[key] = to3as(st.session_state[wkey], minv, maxv)
+        st.session_state[wkey] = float(st.session_state[key])
+
+    v_widget = st.slider(
         f"{label} {f'({unit})' if unit else ''}",
         min_value=float(minv),
         max_value=float(maxv),
-        value=float(st.session_state.get(key, val)),
+        value=float(st.session_state[wkey]),
         step=float(step),
         format="%.3g",
-        key=key
+        key=wkey,
+        on_change=on_change,
     )
-    v = to3as(v, minv, maxv)
-    st.session_state[key] = v
-    return v
+
+    # atualiza canônico SEM tocar no wkey após instanciar (ok porque key não é widget)
+    st.session_state[key] = to3as(v_widget, minv, maxv)
+    return float(st.session_state[key])
 
 def build_functions():
     """
@@ -316,7 +339,6 @@ def build_functions():
         A = slider_param("Amplitude A", "A", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
         phi = slider_param("Constante de fase φ", "phi", PHI_MIN, PHI_MAX, 0.0, 0.001, "rad")
 
-        # Consistência: usa omega0 (já 3 AS)
         Aom = to3as(A * omega0)
         Aom2 = to3as(A * (omega0**2))
 
@@ -446,15 +468,11 @@ st.latex(eqN["a"])
 st.divider()
 
 # -----------------------------
-# Gráficos + escala de tempo (AUTO/MANUAL sem erro)
+# Gráficos + escala de tempo
 # -----------------------------
 st.header("Gráficos")
 
 def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
-    """
-    Recomenda tmax baseado na escala física dominante.
-    Superamortecido: usa o modo lento lam_slow = gamma - sqrt(gamma^2 - omega0^2).
-    """
     HARD_CAP = 1e9
     HARD_FLOOR = 2.0
 
@@ -499,7 +517,7 @@ if "tmax_num" not in st.session_state:
     st.session_state["tmax_num"] = float(st.session_state["tmax"])
 
 def apply_recommended():
-    v = to3as(tmax_rec)
+    v = to3as(tmax_rec, 0.5, 1e9)
     st.session_state["tmax"] = v
     st.session_state["tmax_slider"] = v
     st.session_state["tmax_num"] = v
