@@ -116,7 +116,7 @@ with col_title:
     st.write(
         "Escolha os valores do coeficiente de amortecimento, da massa e da constante elástica "
         "para observar os diferentes comportamentos do oscilador mecânico: movimento harmônico"
-        "simples, movimento harmônico subamortecido, movimento criticamente amortecido, e"
+        " simples, movimento harmônico subamortecido, movimento criticamente amortecido, e "
         "movimento superamortecido."
     )
 
