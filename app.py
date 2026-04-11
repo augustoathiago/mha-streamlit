@@ -190,7 +190,10 @@ with c2:
     st.write(f"**ω₀ = {fmt3(omega0)} rad/s**")
 with c3:
     st.subheader("Comparação e tipo de movimento")
-    st.write(f"**γ {comp} ω₀**")
+    if classificacao == "movimento harmônico simples":
+        st.write("**γ = 0**")
+    else:
+        st.write(f"**γ {comp} ω₀**")
     st.success(f"**{classificacao}**")
 
 st.divider()
