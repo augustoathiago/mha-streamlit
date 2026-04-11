@@ -415,14 +415,36 @@ st.divider()
 # -----------------------------
 st.header("Gráficos")
 
-def choose_tmax():
-    # Se existe período utilizável, mostre ~5 ciclos
+
+def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
+    # Se existe período utilizável, ~5 ciclos
     if T is not None and np.isfinite(T) and T > 0:
         return float(min(50.0, max(2.0, 5.0*T)))
-    # Caso amortecido: escala ~ decaimento
-    if gamma is not None and np.isfinite(gamma) and gamma > 0:
-        return float(min(50.0, max(2.0, 10.0/gamma)))
-    return 10.0
+
+    g = float(gamma_exact)
+    w0 = float(omega0_exact)
+
+    if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
+        return 10.0
+
+    # Caso sem amortecimento (ou quase): usa escala ~ alguns períodos naturais
+    if g < 1e-12 and w0 > 0:
+        return float(min(50.0, max(2.0, 10.0*(2*np.pi/w0))))
+
+    # Subamortecido / crítico: escala ~ decaimento e^{-γt}
+    if g <= w0 + 1e-12:
+        return float(min(50.0, max(2.0, 10.0/g))) if g > 0 else 10.0
+
+    # Superamortecido: escala é governada pelo modo MAIS LENTO
+    # λ_slow = γ - sqrt(γ^2 - ω0^2)  (pode ser muito pequeno)
+    s = np.sqrt(g*g - w0*w0)
+    lam_slow = g - s  # > 0
+
+    if lam_slow < 1e-12:
+        return 200.0  # fallback seguro
+
+    return float(min(500.0, max(2.0, 10.0/lam_slow)))
+
 
 tmax = choose_tmax()
 N = 1400
