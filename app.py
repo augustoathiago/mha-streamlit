@@ -46,6 +46,8 @@ def style_axes(ax):
     ax.yaxis.label.set_color("black")
     ax.title.set_color("black")
     ax.grid(True, alpha=0.25)
+    ax.axhline(0, color="black", linewidth=3.0)
+    ax.axvline(0, color="black", linewidth=3.0)
 
 def synced_slider_number(label, key, min_value, max_value, value, step, unit="", help_text=None):
     """
