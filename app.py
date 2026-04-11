@@ -115,8 +115,8 @@ with col_title:
     st.title("Oscilador Mecânico Física II")
     st.write(
         "Escolha os valores do coeficiente de amortecimento, da massa e da constante elástica "
-        "para observar os diferentes comportamentos do oscilador mecânico: movimento harmônico"
-        " simples, movimento harmônico subamortecido, movimento criticamente amortecido, e "
+        "para observar os diferentes comportamentos do oscilador mecânico: movimento harmônico "
+        "simples, movimento harmônico subamortecido, movimento criticamente amortecido, e "
         "movimento superamortecido."
     )
 
@@ -163,7 +163,7 @@ if m <= 0 or k < 0:
     st.stop()
 
 # valores "exatos" (internos)
-gamma_exact = b / (2.0 * m)          # s^-1 (rad/s por convenção aqui)
+gamma_exact = b / (2.0 * m)          # s^-1
 omega0_exact = np.sqrt(k / m)        # rad/s
 
 # valores arredondados (3 AS) usados para classificação e apresentação
@@ -173,7 +173,6 @@ omega0 = round_sig(omega0_exact, 3)
 
 comp = sgn_comp(gamma, omega0)
 
-# Caso especial: gamma = 0 (b=0)
 if abs(gamma) < 1e-15:
     classificacao = "movimento harmônico simples"
 else:
@@ -272,7 +271,7 @@ def build_functions():
     """
     Retorna x(t), v(t), a(t), e strings latex:
     - eq_letters: simbólicas
-    - eq_numbers: numéricas (bem desenvolvidas, com multiplicações feitas)
+    - eq_numbers: numéricas (bem desenvolvidas)
     """
     if classificacao == "movimento harmônico simples":
         A = slider_param("Amplitude A", "A", AMP_MIN, AMP_MAX, 1.0, 0.001, "m")
@@ -338,7 +337,6 @@ def build_functions():
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m/s")
 
-        # Desenvolvimentos úteis:
         B_minus_ga = B - gamma*a0
         gB = gamma*B
         g2a_minus_2gB = (gamma**2)*a0 - 2*gamma*B
@@ -361,18 +359,15 @@ def build_functions():
         return x, v, a, eq_letters, eq_numbers
 
     else:  # movimento superamortecido
-        # s = sqrt(gamma^2 - omega0^2)
         rad = gamma**2 - omega0**2
         s = np.sqrt(rad) if rad > 0 else 0.0
 
         a0 = slider_param("Constante a", "a_const", LEN_MIN, LEN_MAX, 1.0, 0.001, "m")
         B = slider_param("Constante B", "B_const", LEN_MIN, LEN_MAX, 0.0, 0.001, "m")
 
-        # Forma desenvolvida:
         lam1 = (s - gamma)
         lam2 = -(s + gamma)
 
-        # Coeficientes desenvolvidos para v e a:
         c1 = a0 * lam1
         c2 = B * lam2
         d1 = a0 * (lam1**2)
@@ -409,15 +404,24 @@ st.latex(eqN["a"])
 st.divider()
 
 # -----------------------------
-# Seção: Gráficos
+# Seção: Gráficos + escala de tempo (AUTO/MANUAL)
 # -----------------------------
 st.header("Gráficos")
 
-# --- Tempo recomendado (melhor para superamortecido) ---
 def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
-    # Se existe período utilizável, ~5 ciclos
+    """
+    Recomenda tmax baseado na escala física dominante.
+
+    - harmônico/subamortecido: usa período (~5 ciclos) quando existe
+    - amortecido: usa escala ~ 10/gamma
+    - superamortecido: usa o modo lento: lam_slow = gamma - sqrt(gamma^2 - omega0^2)
+    """
+    # teto sanitário para evitar números absurdos em UI
+    HARD_CAP = 1_000_000.0  # 1e6 s (~11,6 dias)
+    HARD_FLOOR = 2.0
+
     if T is not None and np.isfinite(T) and T > 0:
-        return float(min(50.0, max(2.0, 5.0*T)))
+        return float(min(HARD_CAP, max(HARD_FLOOR, 5.0 * T)))
 
     g = float(gamma_exact)
     w0 = float(omega0_exact)
@@ -425,55 +429,101 @@ def choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact):
     if not (np.isfinite(g) and g >= 0 and np.isfinite(w0) and w0 >= 0):
         return 10.0
 
-    # Caso praticamente sem amortecimento
+    # praticamente sem amortecimento: usa alguns períodos naturais
     if g < 1e-12 and w0 > 0:
-        T0 = 2*np.pi/w0
-        return float(min(50.0, max(2.0, 10.0*T0)))
+        T0 = 2 * np.pi / w0
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 * T0)))
 
-    # Subamortecido / crítico: escala ~ e^{-γt}
+    # subamortecido / crítico: escala típica de envelope
     if g <= w0 + 1e-12:
-        return float(min(50.0, max(2.0, 10.0/g))) if g > 0 else 10.0
+        if g <= 0:
+            return 10.0
+        return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / g)))
 
-    # Superamortecido: modo MAIS LENTO domina
-    # λ_slow = γ - sqrt(γ^2 - ω0^2)
-    s = np.sqrt(g*g - w0*w0)
-    lam_slow = g - s  # positivo e pode ser muito pequeno
+    # superamortecido: modo lento domina
+    s = np.sqrt(max(0.0, g*g - w0*w0))
+    lam_slow = g - s  # pode ser MUITO pequeno
 
-    if lam_slow < 1e-12:
-        return 200.0  # fallback seguro
+    if lam_slow < 1e-15:
+        # extremamente lento: retorna um valor grande, mas limitado pelo HARD_CAP
+        return float(min(HARD_CAP, 100_000.0))
 
-    return float(min(600.0, max(2.0, 10.0/lam_slow)))
+    return float(min(HARD_CAP, max(HARD_FLOOR, 10.0 / lam_slow)))
 
+# --- Escala de tempo (AUTO / MANUAL) ---
 st.subheader("Escala de tempo")
 
+# recomendado (recalculado sempre que b,m,k mudam)
 tmax_rec = choose_tmax_recommended(classificacao, T, gamma_exact, omega0_exact)
-st.session_state["tmax_rec"] = tmax_rec
+st.session_state["tmax_rec"] = float(tmax_rec)
 
+# estado inicial
+if "tmax_auto" not in st.session_state:
+    st.session_state["tmax_auto"] = True  # vem marcado
 if "tmax_user" not in st.session_state:
     st.session_state["tmax_user"] = float(tmax_rec)
 
 def reset_tmax():
     st.session_state["tmax_user"] = float(st.session_state.get("tmax_rec", 10.0))
 
-cT1, cT2 = st.columns([3, 1], vertical_alignment="center")
+# Se estiver em AUTO, "gruda" no recomendado automaticamente
+if st.session_state["tmax_auto"]:
+    st.session_state["tmax_user"] = float(tmax_rec)
+
+# Limites dinâmicos do slider (para não ficar travado em 600 s)
+# - deixa o slider cobrir até ~20x o recomendado, com um mínimo de 600 s
+# - e um máximo razoável (mas ainda grande)
+slider_max = float(min(1_000_000.0, max(600.0, 20.0 * tmax_rec)))
+
+cT1, cT2, cT3 = st.columns([2.2, 2.2, 1.0], vertical_alignment="center")
+
 with cT1:
-    tmax = st.slider(
-        "Tempo máximo do gráfico (s)",
+    st.checkbox("Usar valor recomendado", key="tmax_auto")
+    st.caption(f"Recomendado agora: **{tmax_rec:.3g} s**")
+
+with cT2:
+    # slider (bom para ajuste rápido)
+    tmax_slider = st.slider(
+        "Tempo máximo (slider)",
         min_value=0.5,
-        max_value=600.0,
+        max_value=slider_max,
         value=float(st.session_state["tmax_user"]),
         step=0.5,
         key="tmax_user",
+        disabled=st.session_state["tmax_auto"],
     )
-    st.caption(f"Recomendado agora: **{tmax_rec:.3g} s**")
-with cT2:
-    st.button("Voltar ao recomendado", on_click=reset_tmax)
 
-# Amostragem
+with cT3:
+    # number_input (bom para valores MUITO grandes)
+    tmax_num = st.number_input(
+        "Tempo máximo (digite)",
+        min_value=0.5,
+        max_value=1_000_000.0,
+        value=float(st.session_state["tmax_user"]),
+        step=10.0,
+        format="%.3g",
+        key="tmax_user_num",
+        disabled=st.session_state["tmax_auto"],
+    )
+    st.button("Voltar ao recomendado", on_click=reset_tmax, disabled=st.session_state["tmax_auto"])
+
+# Sincroniza: se manual, number_input domina quando alterado (Streamlit rerun)
+if not st.session_state["tmax_auto"]:
+    # mantém coerência: se o usuário digitou diferente do slider, prioriza o digitado
+    # (como ambos rerunam, basta pegar o maior "fresco" possível)
+    # Aqui, adotamos: se number_input != session_state["tmax_user"], atualiza
+    if "tmax_user_num" in st.session_state:
+        st.session_state["tmax_user"] = float(st.session_state["tmax_user_num"])
+
+tmax = float(st.session_state["tmax_user"])
+
+# --- Amostragem ---
+# Obs.: para tempos enormes, N fixo pode "esconder" transitórios muito rápidos no começo.
+# Para didática, mantemos simples.
 N = 1400
 t = np.linspace(0.0, tmax, N)
 
-# Calcula sinais
+# Sinais
 x = x_fun(t)
 v = v_fun(t)
 acc = a_fun(t)
@@ -510,7 +560,7 @@ ax3.set_ylabel("a (m/s²)")
 ax3.set_xlim(0, tmax)
 style_axes(ax3)
 
-# Energia (3 curvas)
+# Energia
 fig4, ax4 = plt.subplots(figsize=(8, 3.6))
 ax4.plot(t, Ep, linewidth=2.2, color="#1f77b4", label="Energia potencial (Ep)")
 ax4.plot(t, Ec, linewidth=2.2, color="#ff7f0e", label="Energia cinética (Ec)")
