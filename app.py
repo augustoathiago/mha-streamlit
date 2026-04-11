@@ -3,16 +3,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --------------------------------------------------
-# Configurações iniciais
+# Configuração da página
 # --------------------------------------------------
 st.set_page_config(
     page_title="Oscilador Mecânico – Física II",
     layout="wide"
 )
 
-# -----------------------------------------
-# Funções auxiliares de formatação numérica
-# -----------------------------------------
+# --------------------------------------------------
+# Funções auxiliares
+# --------------------------------------------------
 def sig(x):
     if x == 0:
         return 0.0
@@ -20,7 +20,6 @@ def sig(x):
 
 def fs(x):
     return f"{sig(x)}"
-``
 
 # --------------------------------------------------
 # Cabeçalho
@@ -28,6 +27,7 @@ def fs(x):
 col1, col2 = st.columns([1, 6])
 with col1:
     st.image("logo_maua.png", use_container_width=True)
+
 with col2:
     st.title("Oscilador Mecânico – Física II")
     st.markdown(
@@ -43,17 +43,17 @@ st.divider()
 # --------------------------------------------------
 st.header("Parâmetros iniciais do sistema")
 
-col1, col2, col3 = st.columns(3)
+c1, c2, c3 = st.columns(3)
 
-with col1:
+with c1:
     b = st.slider("Coeficiente de amortecimento b (kg/s)", 0.0, 10.0, 0.0, 0.01)
     b = st.number_input("Valor numérico de b", 0.0, 10.0, b, 0.001)
 
-with col2:
+with c2:
     m = st.slider("Massa m (kg)", 0.01, 10.0, 0.01, 0.01)
     m = st.number_input("Valor numérico de m", 0.01, 10.0, m, 0.001)
 
-with col3:
+with c3:
     k = st.slider("Constante elástica k (N/m)", 0.01, 10.0, 0.01, 0.01)
     k = st.number_input("Valor numérico de k", 0.01, 10.0, k, 0.001)
 
@@ -72,7 +72,7 @@ st.latex(r"\gamma = \frac{b}{2m}")
 st.latex(r"\omega_0 = \sqrt{\frac{k}{m}}")
 
 st.markdown(
-    f"""
+f"""
 - **Coeficiente de amortecimento (γ)** = {gamma} rad/s  
 - **Frequência angular natural (ω₀)** = {omega0} rad/s  
 """
@@ -80,20 +80,18 @@ st.markdown(
 
 if gamma == 0:
     movimento = "Movimento harmônico simples"
-    comparacao = "="
+    cmp = "="
 elif gamma < omega0:
     movimento = "Movimento harmônico subamortecido"
-    comparacao = "<"
+    cmp = "<"
 elif gamma == omega0:
     movimento = "Movimento criticamente amortecido"
-    comparacao = "="
+    cmp = "="
 else:
     movimento = "Movimento superamortecido"
-    comparacao = ">"
+    cmp = ">"
 
-st.markdown(
-    f"### γ {comparacao} ω₀  →  **{movimento}**"
-)
+st.markdown(f"### γ {cmp} ω₀  →  **{movimento}**")
 
 # --------------------------------------------------
 # Cálculos
@@ -108,28 +106,21 @@ if movimento in [
 if movimento == "Movimento harmônico simples":
     T = sig(2 * np.pi / omega0)
     f = sig(1 / T)
-    st.latex(r"T = \frac{2\pi}{\omega_0}")
-    st.latex(r"f = \frac{1}{T}")
-    st.markdown(
-        f"""
-- **Período (T)** = {T} s  
-- **Frequência (f)** = {f} Hz  
-"""
-    )
+    st.latex(r"T=\frac{2\pi}{\omega_0}")
+    st.latex(r"f=\frac{1}{T}")
+    st.markdown(f"- **Período (T)** = {T} s\n- **Frequência (f)** = {f} Hz")
 
 elif movimento == "Movimento harmônico subamortecido":
     omega = sig(np.sqrt(omega0**2 - gamma**2))
     T = sig(2 * np.pi / omega)
     f = sig(1 / T)
-    st.latex(r"\omega = \sqrt{\omega_0^2 - \gamma^2}")
-    st.latex(r"T = \frac{2\pi}{\omega}")
-    st.latex(r"f = \frac{1}{T}")
+    st.latex(r"\omega=\sqrt{\omega_0^2-\gamma^2}")
+    st.latex(r"T=\frac{2\pi}{\omega}")
+    st.latex(r"f=\frac{1}{T}")
     st.markdown(
-        f"""
-- **Frequência angular amortecida (ω)** = {omega} rad/s  
-- **Pseudoperíodo (T)** = {T} s  
-- **Frequência (f)** = {f} Hz  
-"""
+        f"- **Frequência angular amortecida (ω)** = {omega} rad/s  \n"
+        f"- **Pseudoperíodo (T)** = {T} s  \n"
+        f"- **Frequência (f)** = {f} Hz"
     )
 
 # --------------------------------------------------
@@ -140,36 +131,34 @@ st.header("Equações do movimento")
 
 t = np.linspace(0, 20, 3000)
 
-# ---------------- MHS -----------------
+# ===================== MHS =====================
 if movimento == "Movimento harmônico simples":
     A = st.slider("Amplitude A (m)", 0.01, 10.0, 1.0)
     phi = st.slider("Constante de fase φ (rad)", 0.0, 2*np.pi, 0.0)
 
-    x = A * np.sin(omega0 * t + phi)
-    v = A * omega0 * np.cos(omega0 * t + phi)
-    a = -A * omega0**2 * np.sin(omega0 * t + phi)
+    x = A * np.sin(omega0*t + phi)
+    v = A * omega0 * np.cos(omega0*t + phi)
+    a = -A * omega0**2 * np.sin(omega0*t + phi)
 
     st.latex(r"x(t)=A\sin(\omega_0 t+\phi)")
-    st.latex(fr"x(t)={sig(A)}\sin({omega0}t+{sig(phi)})")
+    st.latex(fr"x(t)={fs(A)}\sin({fs(omega0)}t+{fs(phi)})")
 
     st.latex(r"v(t)=A\omega_0\cos(\omega_0 t+\phi)")
-    st.latex(fr"v(t)={sig(A*omega0)}\cos({omega0}t+{sig(phi)})")
+    st.latex(fr"v(t)={fs(A*omega0)}\cos({fs(omega0)}t+{fs(phi)})")
 
     st.latex(r"a(t)=-A\omega_0^2\sin(\omega_0 t+\phi)")
-    st.latex(fr"a(t)={sig(-A*omega0**2)}\sin({omega0}t+{sig(phi)})")
+    st.latex(fr"a(t)={fs(-A*omega0**2)}\sin({fs(omega0)}t+{fs(phi)})")
 
-# ------------- Subamortecido -------------
+# ================== SUBAMORTECIDO ==================
 elif movimento == "Movimento harmônico subamortecido":
     C = st.slider("Constante C (m)", 0.01, 10.0, 1.0)
     phi = st.slider("Constante de fase φ (rad)", 0.0, 2*np.pi, 0.0)
 
     omega = sig(np.sqrt(omega0**2 - gamma**2))
 
-    x = C * np.exp(-gamma*t) * np.sin(omega*t + phi)
-    v = C * np.exp(-gamma*t) * (
-        omega*np.cos(omega*t+phi) - gamma*np.sin(omega*t+phi)
-    )
-    a = C * np.exp(-gamma*t) * (
+    x = C*np.exp(-gamma*t)*np.sin(omega*t+phi)
+    v = C*np.exp(-gamma*t)*(omega*np.cos(omega*t+phi)-gamma*np.sin(omega*t+phi))
+    a = C*np.exp(-gamma*t)*(
         -(omega**2+gamma**2)*np.sin(omega*t+phi)
         -2*gamma*omega*np.cos(omega*t+phi)
     )
@@ -180,82 +169,63 @@ elif movimento == "Movimento harmônico subamortecido":
     st.latex(
         r"v(t)=Ce^{-\gamma t}[\omega\cos(\omega t+\phi)-\gamma\sin(\omega t+\phi)]"
     )
-    st.latex(
-        fr"v(t)={fs(C)}e^{{-{fs(gamma)}t}}"
-        fr"[{fs(omega)}\cos({fs(omega)}t+{fs(phi)})"
-        fr"-{fs(gamma)}\sin({fs(omega)}t+{fs(phi)})]"
-    )
 
     st.latex(
-        r"a(t)=Ce^{-\gamma t}[-(\omega^2+\gamma^2)\sin(\omega t+\phi)"
-        r"-2\gamma\omega\cos(\omega t+\phi)]"
+        r"a(t)=Ce^{-\gamma t}"
+        r"[-(\omega^2+\gamma^2)\sin(\omega t+\phi)-2\gamma\omega\cos(\omega t+\phi)]"
     )
 
-# ----------- Criticamente amortecido -----------
+# ================ CRITICAMENTE AMORTECIDO ================
 elif movimento == "Movimento criticamente amortecido":
     a0 = st.slider("Constante a (m)", 0.01, 10.0, 1.0)
     B = st.slider("Constante B (m/s)", -10.0, 10.0, 0.0)
 
-    x = (a0 + B*t) * np.exp(-gamma*t)
-    v = np.exp(-gamma*t) * (B - gamma*(a0 + B*t))
-    a = np.exp(-gamma*t) * (gamma**2*(a0 + B*t) - 2*gamma*B)
+    x = (a0 + B*t)*np.exp(-gamma*t)
+    v = np.exp(-gamma*t)*(B - gamma*(a0+B*t))
+    a = np.exp(-gamma*t)*(gamma**2*(a0+B*t)-2*gamma*B)
 
     st.latex(r"x(t)=(a+Bt)e^{-\gamma t}")
     st.latex(fr"x(t)=({fs(a0)}+{fs(B)}t)e^{{-{fs(gamma)}t}}")
 
     st.latex(r"v(t)=e^{-\gamma t}[B-\gamma(a+Bt)]")
     st.latex(
-        fr"v(t)=e^{{-{fs(gamma)}t}}"
-        fr"[{fs(B)}-{fs(gamma)}({fs(a0)}+{fs(B)}t)]"
+        fr"v(t)=e^{{-{fs(gamma)}t}}[{fs(B)}-{fs(gamma)}({fs(a0)}+{fs(B)}t)]"
     )
 
     st.latex(r"a(t)=e^{-\gamma t}[\gamma^2(a+Bt)-2\gamma B]")
 
-# ----------- Superamortecido -----------
+# ================= SUPERAMORTECIDO =================
 else:
     a0 = st.slider("Constante a (m)", 0.01, 10.0, 1.0)
     B = st.slider("Constante B (m)", 0.01, 10.0, 1.0)
 
-    # variável auxiliar interna (NÃO exibida)
-    alpha = np.sqrt(gamma**2 - omega0**2)
+    alpha = np.sqrt(gamma**2 - omega0**2)  # variável interna
 
-    x = np.exp(-gamma*t) * (
-        a0*np.exp(alpha*t) + B*np.exp(-alpha*t)
+    x = np.exp(-gamma*t)*(a0*np.exp(alpha*t)+B*np.exp(-alpha*t))
+    v = np.exp(-gamma*t)*(
+        (alpha-gamma)*a0*np.exp(alpha*t)
+        -(alpha+gamma)*B*np.exp(-alpha*t)
+    )
+    a = np.exp(-gamma*t)*(
+        (alpha-gamma)**2*a0*np.exp(alpha*t)
+        +(alpha+gamma)**2*B*np.exp(-alpha*t)
     )
 
-    v = np.exp(-gamma*t) * (
-        (alpha - gamma)*a0*np.exp(alpha*t)
-        - (alpha + gamma)*B*np.exp(-alpha*t)
-    )
-
-    a = np.exp(-gamma*t) * (
-        (alpha - gamma)**2 * a0*np.exp(alpha*t)
-        + (alpha + gamma)**2 * B*np.exp(-alpha*t)
-    )
-
-    # --- Equações exibidas ---
     st.latex(
         r"x(t)=e^{-\gamma t}"
-        r"\left[a\,e^{\sqrt{\gamma^2-\omega_0^2}\,t}"
-        r"+B\,e^{-\sqrt{\gamma^2-\omega_0^2}\,t}\right]"
-    )
-
-    st.latex(
-        fr"x(t)=e^{{-{sig(gamma)}t}}"
-        fr"\left[{sig(a0)}e^{{\sqrt{{{sig(gamma)}^2-{sig(omega0)}^2}}\,t}}"
-        fr"+{sig(B)}e^{{-\sqrt{{{sig(gamma)}^2-{sig(omega0)}^2}}\,t}}\right]"
+        r"[ae^{\sqrt{\gamma^2-\omega_0^2}t}+Be^{-\sqrt{\gamma^2-\omega_0^2}t}]"
     )
 
     st.latex(
         r"v(t)=e^{-\gamma t}"
-        r"\left[(\sqrt{\gamma^2-\omega_0^2}-\gamma)a\,e^{\sqrt{\gamma^2-\omega_0^2}t}"
-        r"-(\sqrt{\gamma^2-\omega_0^2}+\gamma)B\,e^{-\sqrt{\gamma^2-\omega_0^2}t}\right]"
+        r"[(\sqrt{\gamma^2-\omega_0^2}-\gamma)ae^{\sqrt{\gamma^2-\omega_0^2}t}"
+        r"-(\sqrt{\gamma^2-\omega_0^2}+\gamma)Be^{-\sqrt{\gamma^2-\omega_0^2}t}]"
     )
 
     st.latex(
         r"a(t)=e^{-\gamma t}"
-        r"\left[(\sqrt{\gamma^2-\omega_0^2}-\gamma)^2 a\,e^{\sqrt{\gamma^2-\omega_0^2}t}"
-        r"+(\sqrt{\gamma^2-\omega_0^2}+\gamma)^2 B\,e^{-\sqrt{\gamma^2-\omega_0^2}t}\right]"
+        r"[(\sqrt{\gamma^2-\omega_0^2}-\gamma)^2ae^{\sqrt{\gamma^2-\omega_0^2}t}"
+        r"+(\sqrt{\gamma^2-\omega_0^2}+\gamma)^2Be^{-\sqrt{\gamma^2-\omega_0^2}t}]"
     )
 
 # --------------------------------------------------
@@ -264,9 +234,9 @@ else:
 st.divider()
 st.header("Gráficos")
 
-E_c = 0.5 * m * v**2
-E_p = 0.5 * k * x**2
-E_m = E_c + E_p
+Ec = 0.5*m*v**2
+Ep = 0.5*k*x**2
+Em = Ec + Ep
 
 fig, axs = plt.subplots(4, 1, figsize=(9, 13), sharex=True)
 
@@ -279,9 +249,9 @@ axs[1].set_ylabel("v (m/s)")
 axs[2].plot(t, a)
 axs[2].set_ylabel("a (m/s²)")
 
-axs[3].plot(t, E_p, label="Energia potencial", color="blue")
-axs[3].plot(t, E_c, label="Energia cinética", color="red")
-axs[3].plot(t, E_m, label="Energia mecânica total", color="green")
+axs[3].plot(t, Ep, label="Potencial", color="blue")
+axs[3].plot(t, Ec, label="Cinética", color="red")
+axs[3].plot(t, Em, label="Mecânica total", color="green")
 axs[3].set_ylabel("Energia (J)")
 axs[3].legend()
 
